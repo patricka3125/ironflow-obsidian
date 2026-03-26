@@ -75,9 +75,9 @@ Line 3`
 				provider: "claude_code",
 			})
 		);
-		expect(await readFileContent(app.vault, createdTask.filePath)).toContain(
-			"<% tp.file.title %>"
-		);
+		const taskFileContent = await readFileContent(app.vault, createdTask.filePath);
+		expect(taskFileContent).not.toContain("<% tp.file.title %>");
+		expect(taskFileContent).toContain("ironflow-template: Review Cycle Prompt");
 
 		await taskManager.updateTaskFrontmatter(createdTask.filePath, {
 			"ironflow-agent-profile": "developer",

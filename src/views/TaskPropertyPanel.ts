@@ -15,6 +15,7 @@ export class TaskPropertyPanel extends ItemView {
 	private currentTask: IronflowTask | null = null;
 	private pendingUpdates: Record<string, unknown> = {};
 	private pendingSaveTimer: ReturnType<typeof setTimeout> | null = null;
+	private renderGeneration = 0;
 	private readonly plugin: IronflowPlugin;
 
 	constructor(leaf: WorkspaceLeaf, plugin: IronflowPlugin) {
@@ -80,6 +81,8 @@ export class TaskPropertyPanel extends ItemView {
 
 	/**
 	 * Reload the current task from disk and re-render the panel.
+	 * Skips re-rendering when the frontmatter has not changed (e.g.,
+	 * after the panel's own writes trigger a metadata cache event).
 	 */
 	async refreshCurrentTask(): Promise<void> {
 		if (!this.currentTask || !this.plugin.taskManager) {
@@ -93,6 +96,13 @@ export class TaskPropertyPanel extends ItemView {
 			return;
 		}
 
+		if (
+			JSON.stringify(refreshedTask.frontmatter) ===
+			JSON.stringify(this.currentTask.frontmatter)
+		) {
+			return;
+		}
+
 		await this.loadTask(refreshedTask);
 	}
 
@@ -100,6 +110,7 @@ export class TaskPropertyPanel extends ItemView {
 	 * Load a task into the panel and render all editable fields.
 	 */
 	async loadTask(task: IronflowTask): Promise<void> {
+		const thisGeneration = ++this.renderGeneration;
 		this.currentTask = task;
 		this.pendingUpdates = {};
 		if (this.pendingSaveTimer) {
@@ -111,8 +122,11 @@ export class TaskPropertyPanel extends ItemView {
 		this.containerEl.addClass("ironflow-task-panel");
 		this.containerEl.createDiv({ cls: "ironflow-task-name" }).setText(task.name);
 		await this.renderCoreFields(task);
+		if (this.renderGeneration !== thisGeneration) return;
 		await this.renderDependencySection(task, "ironflow-depends-on", "Depends on");
+		if (this.renderGeneration !== thisGeneration) return;
 		await this.renderDependencySection(task, "ironflow-next-tasks", "Next tasks");
+		if (this.renderGeneration !== thisGeneration) return;
 		this.containerEl.createEl("hr", { cls: "ironflow-divider" });
 		await this.renderTemplateFields(task);
 	}
@@ -287,7 +301,8 @@ export class TaskPropertyPanel extends ItemView {
 				.setText("Template fields");
 		}
 		for (const field of fieldSchema) {
-			const currentValue = task.frontmatter[field.key] ?? field.defaultValue;
+			const rawValue = task.frontmatter[field.key] ?? field.defaultValue;
+			const currentValue = rawValue === null || rawValue === undefined ? "" : rawValue;
 			if (typeof currentValue === "string" && !currentValue.includes("\n")) {
 				new Setting(this.containerEl)
 					.setName(field.key)
@@ -353,7 +368,10 @@ export class TaskPropertyPanel extends ItemView {
 			this.currentTask.filePath,
 			updates
 		);
-		await this.refreshCurrentTask();
+		this.currentTask = {
+			...this.currentTask,
+			frontmatter: { ...this.currentTask.frontmatter, ...updates },
+		};
 	}
 
 	private async getSiblingTasks(task: IronflowTask): Promise<IronflowTask[]> {

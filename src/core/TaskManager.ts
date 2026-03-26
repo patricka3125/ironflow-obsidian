@@ -1,6 +1,6 @@
 import type { App, TAbstractFile, TFile, TFolder } from "obsidian";
 
-import { parseFrontmatter, stripFrontmatter, updateFrontmatter } from "./frontmatter";
+import { parseFrontmatter, updateFrontmatter } from "./frontmatter";
 import type { TemplateRegistry } from "./TemplateRegistry";
 import {
 	buildIronflowTask,
@@ -66,7 +66,7 @@ export class TaskManager {
 
 		const templateContent = await this.app.vault.read(templateFile);
 		const templateFrontmatter = parseFrontmatter(templateContent);
-		const taskContent = updateFrontmatter(stripFrontmatter(templateContent), {
+		const taskContent = updateFrontmatter("", {
 			"ironflow-template": templateName,
 			"ironflow-workflow": workflowName,
 			"ironflow-agent-profile": "",
