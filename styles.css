@@ -1,8 +1,87 @@
-/*
+/* =========================================================================
+   Ironflow Plugin Styles
+   Uses Obsidian CSS custom properties for theme compatibility.
+   ========================================================================= */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* --- Side panel: TaskPropertyPanel --- */
 
-If your plugin does not need CSS, delete this file.
+.workspace-leaf-content[data-type="ironflow-task-properties"] .view-content {
+	padding: 0;
+}
 
-*/
+.ironflow-task-panel {
+	padding: var(--size-4-3);
+	overflow-y: auto;
+}
+
+/* Task name heading */
+.ironflow-task-name {
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+	padding: var(--size-4-1) 0 var(--size-4-3);
+	line-height: var(--line-height-tight);
+}
+
+/* Section labels (Depends on, Next tasks, Template fields) */
+.ironflow-section-label {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin-top: var(--size-4-3);
+	padding-bottom: var(--size-2-2);
+	border-bottom: var(--border-width) solid var(--background-modifier-border);
+}
+
+/* Empty state when no task is selected */
+.ironflow-empty-state {
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+	text-align: center;
+	padding: var(--size-4-12) var(--size-4-4);
+}
+
+/* Hint text for empty dependency lists */
+.ironflow-empty-hint {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	font-style: italic;
+	padding: var(--size-2-3) 0;
+}
+
+/* Horizontal divider between core fields and template fields */
+.ironflow-divider {
+	border: none;
+	border-top: var(--border-width) solid var(--background-modifier-border);
+	margin: var(--size-4-3) 0;
+}
+
+/* Dependency rows — linked task name as accent */
+.ironflow-dependency-row .setting-item-name {
+	color: var(--text-accent);
+}
+
+.ironflow-dependency-row .setting-item-control .clickable-icon,
+.ironflow-dependency-row .setting-item-control button {
+	color: var(--text-muted);
+}
+
+.ironflow-dependency-row .setting-item-control button:hover {
+	color: var(--text-error);
+}
+
+/* Add-dependency row — subtle background to distinguish from the list */
+.ironflow-dependency-add {
+	background-color: var(--background-modifier-form-field);
+	border-radius: var(--radius-s);
+	padding: var(--size-2-3) var(--size-4-2);
+	margin-top: var(--size-2-2);
+}
+
+/* --- Modal: WorkflowCommandModal --- */
+
+.ironflow-modal {
+	max-width: var(--modal-max-width-narrow);
+}
