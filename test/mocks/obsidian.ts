@@ -423,6 +423,10 @@ export class ButtonComponent {
 		return this;
 	}
 
+	setWarning(): this {
+		return this;
+	}
+
 	onClick(callback: () => unknown): this {
 		this.clickHandler = callback;
 		this.buttonEl.clickHandler = callback;

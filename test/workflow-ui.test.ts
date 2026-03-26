@@ -9,6 +9,7 @@ import {
 } from "../src/core/workflowPaths";
 import IronflowPlugin from "../src/main";
 import type { IronflowTask, TemplateSchema } from "../src/types";
+import { RemoveTaskModal } from "../src/views/RemoveTaskModal";
 import { TaskPropertyPanel } from "../src/views/TaskPropertyPanel";
 import { WorkflowCommandModal } from "../src/views/WorkflowCommandModal";
 import {
@@ -151,6 +152,61 @@ describe("Workflow UI", () => {
 				templateName: "Review",
 			},
 		]);
+	});
+
+	it("removes a task via the remove-task modal", async () => {
+		const app = createFakeApp();
+		const removedTasks: Array<{ workflowName: string; taskName: string }> = [];
+		app.workspace.activeFile = createFakeFile("Workflows/alpha.canvas") as never;
+		const modal = new RemoveTaskModal(app as never, {
+			app,
+			settings: {
+				workflowFolder: "Workflows",
+				templateFolder: "Templates",
+			},
+			workflowManager: {
+				async getWorkflow(): Promise<{
+					tasks: Array<{ name: string }>;
+				}> {
+					return {
+						tasks: [{ name: "task-a" }, { name: "task-b" }],
+					};
+				},
+				async removeTaskFromWorkflow(
+					workflowName: string,
+					taskName: string
+				): Promise<void> {
+					removedTasks.push({ workflowName, taskName });
+				},
+			},
+		} as never);
+
+		await modal.onOpen();
+		modal.setSelectedTaskName("task-b");
+		expect(await modal.submit()).toBe(true);
+		expect(removedTasks).toEqual([
+			{ workflowName: "alpha", taskName: "task-b" },
+		]);
+		expect((Notice as unknown as { notices: string[] }).notices).toContain(
+			'Task "task-b" removed from "alpha".'
+		);
+	});
+
+	it("requires an active workflow canvas before the remove-task modal submits", async () => {
+		const app = createFakeApp();
+		const modal = new RemoveTaskModal(app as never, {
+			app,
+			settings: {
+				workflowFolder: "Workflows",
+				templateFolder: "Templates",
+			},
+			workflowManager: {},
+		} as never);
+
+		expect(await modal.submit()).toBe(false);
+		expect((Notice as unknown as { notices: string[] }).notices).toContain(
+			"Open a workflow canvas before removing a task."
+		);
 	});
 
 	it("renders the task panel, debounces text updates, and syncs dependencies", async () => {
@@ -359,13 +415,14 @@ describe("Workflow UI", () => {
 		expect((plugin as never as { commands: Array<{ id: string }> }).commands.map((command) => command.id)).toEqual([
 			"create-workflow",
 			"add-task",
+			"remove-task",
 			"open-task-panel",
 		]);
 		expect((plugin as never as { ribbonIcons: unknown[] }).ribbonIcons).toHaveLength(1);
 
 		await (plugin as never as {
 			commands: Array<{ callback?: () => Promise<unknown> | unknown }>;
-		}).commands[2]?.callback?.();
+		}).commands[3]?.callback?.();
 		const panelLeaf = app.workspace.getLeavesOfType(TaskPropertyPanel.VIEW_TYPE)[0];
 		expect(panelLeaf?.view).toBeInstanceOf(TaskPropertyPanel);
 

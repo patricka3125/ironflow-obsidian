@@ -91,6 +91,7 @@ To create `build-feature -> code-review -> deploy`:
 |---------|-------------|
 | **Ironflow: New Workflow** | Create a new workflow definition (canvas + task folder) |
 | **Ironflow: Add Task** | Add a task to the active workflow from a template |
+| **Ironflow: Remove Task** | Remove a task from the active workflow (cleans up file, canvas node, edges, and sibling dependencies) |
 | **Ironflow: Open Task Properties** | Open the task property side panel |
 
 The ribbon sidebar also has an Ironflow icon for quick access to the task properties panel.

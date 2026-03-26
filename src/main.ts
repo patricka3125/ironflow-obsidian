@@ -12,6 +12,7 @@ import {
 import { WorkflowManager } from "./core/WorkflowManager";
 import { IronflowSettingsTab } from "./settings/SettingsTab";
 import { DEFAULT_SETTINGS, type IronflowSettings } from "./types";
+import { RemoveTaskModal } from "./views/RemoveTaskModal";
 import { TaskPropertyPanel } from "./views/TaskPropertyPanel";
 import { WorkflowCommandModal } from "./views/WorkflowCommandModal";
 
@@ -207,6 +208,13 @@ export default class IronflowPlugin extends Plugin {
 			name: "Add Task",
 			callback: () => {
 				new WorkflowCommandModal(this.app, this, "add-task").open();
+			},
+		});
+		this.addCommand({
+			id: "remove-task",
+			name: "Remove Task",
+			callback: () => {
+				new RemoveTaskModal(this.app, this).open();
 			},
 		});
 		this.addCommand({
