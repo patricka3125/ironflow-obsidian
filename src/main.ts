@@ -1,6 +1,7 @@
 import { Notice, Plugin } from "obsidian";
 import { getAPI, type LocalRestApiPublicApi } from "obsidian-local-rest-api";
 
+import { TemplateRegistry } from "./core/TemplateRegistry";
 import { IronflowSettingsTab } from "./settings/SettingsTab";
 import { DEFAULT_SETTINGS, type IronflowSettings } from "./types";
 
@@ -16,6 +17,7 @@ type RegisteredLocalRestApi = LocalRestApiPublicApi & {
 export default class IronflowPlugin extends Plugin {
 	private api: RegisteredLocalRestApi | null = null;
 	settings: IronflowSettings = { ...DEFAULT_SETTINGS };
+	templateRegistry: TemplateRegistry | null = null;
 
 	/**
 	 * Load plugin resources and register integrations.
@@ -23,6 +25,11 @@ export default class IronflowPlugin extends Plugin {
 	async onload(): Promise<void> {
 		await this.loadSettings();
 		this.addSettingTab(new IronflowSettingsTab(this.app, this));
+		this.templateRegistry = new TemplateRegistry(
+			this.app,
+			this.settings.templateFolder
+		);
+		await this.templateRegistry.initialize();
 
 		this.ensureTemplaterIsEnabled();
 		this.tryRegisterRoutes();
@@ -39,6 +46,8 @@ export default class IronflowPlugin extends Plugin {
 	 * Tear down plugin-managed resources.
 	 */
 	onunload(): void {
+		this.templateRegistry?.dispose();
+		this.templateRegistry = null;
 		this.api?.unregister?.();
 		this.api = null;
 	}

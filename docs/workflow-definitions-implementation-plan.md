@@ -120,6 +120,8 @@ Rewrite `src/main.ts` as the Ironflow plugin shell with settings loading, and cr
 
 ## Phase 2: Template Discovery
 
+Status: Complete
+
 Depends on **Phase 1** (types, frontmatter utility, plugin shell, settings). This phase implements the ability to discover and parse Templater templates from the vault.
 
 ### Task 2.1: Implement TemplateRegistry
@@ -133,12 +135,12 @@ Create `src/core/TemplateRegistry.ts` that scans the configured template folder,
 - Filter out non-template files (if any heuristic is needed, e.g., only files with frontmatter)
 
 **Acceptance Criteria**:
-- [ ] On plugin load, `TemplateRegistry` discovers all `.md` files in the configured template folder
-- [ ] `getTemplates()` returns a `TemplateSchema[]` with correct `name`, `filePath`, and `fields` for each template
-- [ ] `getFieldSchema("Review Cycle Prompt")` returns `[{key: "current-branch", ...}, {key: "target-branch", ...}, {key: "provider", ...}]`
-- [ ] Adding a new template file to the folder is detected and the registry updates without plugin restart
-- [ ] Deleting a template file removes it from the registry
-- [ ] Modifying a template's frontmatter updates the cached field schema
+- [x] On plugin load, `TemplateRegistry` discovers all `.md` files in the configured template folder
+- [x] `getTemplates()` returns a `TemplateSchema[]` with correct `name`, `filePath`, and `fields` for each template
+- [x] `getFieldSchema("Review Cycle Prompt")` returns `[{key: "current-branch", ...}, {key: "target-branch", ...}, {key: "provider", ...}]`
+- [x] Adding a new template file to the folder is detected and the registry updates without plugin restart
+- [x] Deleting a template file removes it from the registry
+- [x] Modifying a template's frontmatter updates the cached field schema
 
 ### Task 2.2: Integrate TemplateRegistry into Plugin Lifecycle
 
@@ -150,9 +152,9 @@ Wire `TemplateRegistry` into `src/main.ts` so it initializes on plugin load.
 - Store as a plugin instance property for use by other modules in later phases
 
 **Acceptance Criteria**:
-- [ ] `TemplateRegistry` initializes successfully on plugin load
-- [ ] Templates are available immediately after plugin load completes
-- [ ] No errors when the template folder is empty or doesn't exist (graceful degradation)
+- [x] `TemplateRegistry` initializes successfully on plugin load
+- [x] Templates are available immediately after plugin load completes
+- [x] No errors when the template folder is empty or doesn't exist (graceful degradation)
 
 ---
 
