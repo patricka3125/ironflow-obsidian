@@ -371,25 +371,18 @@ export class TaskPropertyPanel extends ItemView {
 			field === "ironflow-depends-on"
 				? "ironflow-next-tasks"
 				: "ironflow-depends-on";
-		const reciprocalLink = `[[${this.currentTask.name}]]`;
 		const currentLinks = linkedTask.frontmatter[reciprocalField];
 		const nextLinks = shouldAdd
 			? addUniqueLink(currentLinks, this.currentTask.name)
 			: currentLinks.filter(
 					(link) => getTaskNameFromLink(link) !== this.currentTask?.name
 			  );
-		if (nextLinks.length === currentLinks.length && !shouldAdd) {
-			return;
-		}
-		if (
-			shouldAdd &&
-			currentLinks.some((link) => getTaskNameFromLink(link) === this.currentTask?.name)
-		) {
+		if (nextLinks.length === currentLinks.length) {
 			return;
 		}
 
 		await this.plugin.taskManager.updateTaskFrontmatter(linkedTask.filePath, {
-			[reciprocalField]: shouldAdd ? [...currentLinks, reciprocalLink] : nextLinks,
+			[reciprocalField]: nextLinks,
 		});
 	}
 }

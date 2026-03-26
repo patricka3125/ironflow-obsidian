@@ -1,153 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { App, Events, Notice, WorkspaceLeaf } from "obsidian";
+import { App, Notice, WorkspaceLeaf } from "obsidian";
 
 import { updateFrontmatter } from "../src/core/frontmatter";
+import {
+	getWorkflowNameFromCanvasPath,
+	getWorkflowNameFromTaskPath,
+} from "../src/core/workflowPaths";
 import IronflowPlugin from "../src/main";
 import type { IronflowTask, TemplateSchema } from "../src/types";
 import { TaskPropertyPanel } from "../src/views/TaskPropertyPanel";
 import { WorkflowCommandModal } from "../src/views/WorkflowCommandModal";
+import {
+	createFakeFile,
+	FakeMetadataCache,
+	FakeVault,
+	type FakeFile,
+} from "./mocks/fakeVault";
 
-interface FakeFile {
-	path: string;
-	basename: string;
-	extension: string;
-}
-
-interface FakeFolder {
-	path: string;
-	children: Array<FakeFile | FakeFolder>;
-}
-
-class FakeVault extends Events {
-	private readonly files = new Map<string, FakeFile>();
-	private readonly folders = new Map<string, FakeFolder>();
-	private readonly contents = new Map<string, string>();
-
-	constructor() {
-		super();
-		this.folders.set("", { path: "", children: [] });
-	}
-
-	getAbstractFileByPath(path: string): FakeFile | FakeFolder | null {
-		return this.files.get(path) ?? this.folders.get(path) ?? null;
-	}
-
-	getFileByPath(path: string): FakeFile | null {
-		return this.files.get(path) ?? null;
-	}
-
-	getFolderByPath(path: string): FakeFolder | null {
-		return this.folders.get(path) ?? null;
-	}
-
-	async create(path: string, data: string): Promise<FakeFile> {
-		const file = this.writeFile(path, data);
-		this.trigger("create", file);
-		return file;
-	}
-
-	async createFolder(path: string): Promise<FakeFolder> {
-		const folder = this.ensureFolder(path);
-		this.trigger("create", folder);
-		return folder;
-	}
-
-	async read(file: FakeFile): Promise<string> {
-		const content = this.contents.get(file.path);
-		if (content === undefined) {
-			throw new Error(`No content for "${file.path}".`);
-		}
-
-		return content;
-	}
-
-	async cachedRead(file: FakeFile): Promise<string> {
-		return this.read(file);
-	}
-
-	async modify(file: FakeFile, data: string): Promise<void> {
-		this.contents.set(file.path, data);
-		this.trigger("modify", file);
-	}
-
-	async delete(file: FakeFile | FakeFolder, force = false): Promise<void> {
-		if ("children" in file) {
-			if (file.children.length > 0 && !force) {
-				throw new Error(`Folder "${file.path}" is not empty.`);
-			}
-
-			for (const child of [...file.children]) {
-				await this.delete(child as FakeFile | FakeFolder, true);
-			}
-			this.detachFromParent(file.path);
-			this.folders.delete(file.path);
-			this.trigger("delete", file);
-			return;
-		}
-
-		this.detachFromParent(file.path);
-		this.files.delete(file.path);
-		this.contents.delete(file.path);
-		this.trigger("delete", file);
-	}
-
-	ensureFolder(path: string): FakeFolder {
-		if (path === "") {
-			return this.folders.get("") as FakeFolder;
-		}
-
-		const existing = this.folders.get(path);
-		if (existing) {
-			return existing;
-		}
-
-		const parent = this.ensureFolder(getParentPath(path));
-		const folder: FakeFolder = { path, children: [] };
-		parent.children.push(folder);
-		this.folders.set(path, folder);
-		return folder;
-	}
-
-	writeFile(path: string, data: string): FakeFile {
-		const parent = this.ensureFolder(getParentPath(path));
-		const existing = this.files.get(path);
-		if (existing) {
-			this.contents.set(path, data);
-			return existing;
-		}
-
-		const file = createFile(path);
-		parent.children.push(file);
-		this.files.set(path, file);
-		this.contents.set(path, data);
-		return file;
-	}
-
-	private detachFromParent(path: string): void {
-		const parent = this.folders.get(getParentPath(path));
-		if (!parent) {
-			return;
-		}
-
-		parent.children = parent.children.filter((child) => child.path !== path);
-	}
-}
-
-class FakeMetadataCache extends Events {
-	private readonly frontmatterByPath = new Map<string, Record<string, unknown> | null>();
-
-	setFrontmatter(path: string, frontmatter: Record<string, unknown> | null): void {
-		this.frontmatterByPath.set(path, frontmatter);
-	}
-
-	getFileCache(file: FakeFile): { frontmatter?: Record<string, unknown> } | null {
-		const frontmatter = this.frontmatterByPath.get(file.path);
-		return frontmatter ? { frontmatter } : null;
-	}
-}
-
-describe("Phase 4 UI", () => {
+describe("Workflow UI", () => {
 	beforeEach(() => {
 		(Notice as unknown as { reset(): void }).reset();
 		vi.useRealTimers();
@@ -231,6 +102,55 @@ describe("Phase 4 UI", () => {
 		expect((Notice as unknown as { notices: string[] }).notices).toContain(
 			"Open a workflow canvas before adding a task."
 		);
+	});
+
+	it("submits the add-task modal when an active workflow canvas is open", async () => {
+		const app = createFakeApp();
+		const addedTasks: Array<{
+			workflowName: string;
+			taskName: string;
+			templateName: string;
+		}> = [];
+		app.workspace.activeFile = createFakeFile("Workflows/alpha.canvas") as never;
+		const modal = new WorkflowCommandModal(
+			app as never,
+			{
+				app,
+				settings: {
+					workflowFolder: "Workflows",
+					templateFolder: "Templates",
+				},
+				templateRegistry: {
+					getTemplates(): TemplateSchema[] {
+						return [{ name: "Review", filePath: "Templates/Review.md", fields: [] }];
+					},
+				},
+				workflowManager: {
+					async getWorkflow(): Promise<{ tasks: IronflowTask[] }> {
+						return { tasks: [] } as { tasks: IronflowTask[] };
+					},
+					async addTaskToWorkflow(
+						workflowName: string,
+						taskName: string,
+						templateName: string
+					): Promise<void> {
+						addedTasks.push({ workflowName, taskName, templateName });
+					},
+				},
+			} as never,
+			"add-task"
+		);
+
+		modal.setNameValue("task-a");
+		modal.setSelectedTemplateName("Review");
+		expect(await modal.submit()).toBe(true);
+		expect(addedTasks).toEqual([
+			{
+				workflowName: "alpha",
+				taskName: "task-a",
+				templateName: "Review",
+			},
+		]);
 	});
 
 	it("renders the task panel, debounces text updates, and syncs dependencies", async () => {
@@ -327,6 +247,84 @@ describe("Phase 4 UI", () => {
 		});
 	});
 
+	it("removes dependencies reciprocally and syncs the canvas", async () => {
+		const app = createFakeApp();
+		const taskA = createTask("alpha", "task-a", {
+			"ironflow-template": "Review",
+			"ironflow-workflow": "alpha",
+			"ironflow-agent-profile": "",
+			"ironflow-depends-on": [],
+			"ironflow-next-tasks": ["[[task-b]]"],
+			provider: "claude_code",
+		});
+		const taskB = createTask("alpha", "task-b", {
+			"ironflow-template": "Review",
+			"ironflow-workflow": "alpha",
+			"ironflow-agent-profile": "",
+			"ironflow-depends-on": ["[[task-a]]"],
+			"ironflow-next-tasks": [],
+			provider: "claude_code",
+		});
+		const updates: Array<{ path: string; updates: Record<string, unknown> }> = [];
+		const panel = new TaskPropertyPanel(
+			new (WorkspaceLeaf as unknown as { new (...args: unknown[]): WorkspaceLeaf })(
+				app.workspace
+			) as never,
+			{
+				app,
+				settings: {
+					workflowFolder: "Workflows",
+					templateFolder: "Templates",
+				},
+				templateRegistry: {
+					getFieldSchema(): TemplateSchema["fields"] {
+						return [];
+					},
+				},
+				taskManager: {
+					async getWorkflowTasks(): Promise<IronflowTask[]> {
+						return [taskA, taskB];
+					},
+					async getTask(path: string): Promise<IronflowTask | null> {
+						return path === taskA.filePath ? taskA : taskB;
+					},
+					async updateTaskFrontmatter(
+						path: string,
+						nextUpdates: Record<string, unknown>
+					): Promise<void> {
+						updates.push({ path, updates: nextUpdates });
+						if (path === taskA.filePath) {
+							taskA.frontmatter = { ...taskA.frontmatter, ...nextUpdates };
+						} else {
+							taskB.frontmatter = { ...taskB.frontmatter, ...nextUpdates };
+						}
+					},
+				},
+				canvasWriter: {
+					async syncEdges(): Promise<void> {
+						updates.push({ path: "canvas", updates: { synced: true } });
+					},
+				},
+			} as never
+		);
+
+		await panel.loadTask(taskA);
+		await panel.removeDependency("ironflow-next-tasks", "task-b");
+
+		expect(updates).toContainEqual({
+			path: taskA.filePath,
+			updates: { "ironflow-next-tasks": [] },
+		});
+		expect(updates).toContainEqual({
+			path: taskB.filePath,
+			updates: { "ironflow-depends-on": [] },
+		});
+		expect(updates).toContainEqual({
+			path: "canvas",
+			updates: { synced: true },
+		});
+	});
+
 	it("registers commands, ribbon action, and task panel events in the plugin lifecycle", async () => {
 		const app = createFakeApp();
 		app.plugins.enabledPlugins.add("templater-obsidian");
@@ -400,6 +398,27 @@ describe("Phase 4 UI", () => {
 			"reviewer"
 		);
 	});
+
+	it("parses workflow names from canvas and task paths", () => {
+		expect(getWorkflowNameFromCanvasPath("Workflows", "Workflows/alpha.canvas")).toBe(
+			"alpha"
+		);
+		expect(
+			getWorkflowNameFromCanvasPath("Workflows", "Workflows/nested/alpha.canvas")
+		).toBeNull();
+		expect(getWorkflowNameFromCanvasPath("Workflows", "Workflows/alpha.md")).toBeNull();
+
+		expect(getWorkflowNameFromTaskPath("Workflows", "Workflows/alpha/task-a.md")).toBe(
+			"alpha"
+		);
+		expect(
+			getWorkflowNameFromTaskPath(
+				"Workflows",
+				"Workflows/alpha/nested/task-a.md"
+			)
+		).toBeNull();
+		expect(getWorkflowNameFromTaskPath("Workflows", "Workflows/alpha.canvas")).toBeNull();
+	});
 });
 
 function createFakeApp(): any {
@@ -420,16 +439,4 @@ function createTask(
 		canvasNodeId: null,
 		frontmatter,
 	};
-}
-
-function createFile(path: string): FakeFile {
-	return {
-		path,
-		basename: path.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? path,
-		extension: path.split(".").at(-1) ?? "",
-	};
-}
-
-function getParentPath(path: string): string {
-	return path.split("/").slice(0, -1).join("/");
 }

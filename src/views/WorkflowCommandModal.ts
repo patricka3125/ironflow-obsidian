@@ -121,65 +121,83 @@ export class WorkflowCommandModal extends Modal {
 	}
 
 	private async createWorkflow(name: string): Promise<boolean> {
-		if (!this.plugin.workflowManager) {
-			new Notice("Ironflow workflow services are not available.");
-			return false;
-		}
+		try {
+			if (!this.plugin.workflowManager) {
+				new Notice("Ironflow workflow services are not available.");
+				return false;
+			}
 
-		const existingWorkflow = await this.plugin.workflowManager.getWorkflow(name);
-		if (existingWorkflow) {
-			new Notice(`Workflow "${name}" already exists.`);
-			return false;
-		}
+			const existingWorkflow = await this.plugin.workflowManager.getWorkflow(name);
+			if (existingWorkflow) {
+				new Notice(`Workflow "${name}" already exists.`);
+				return false;
+			}
 
-		const workflow = await this.plugin.workflowManager.createWorkflow(name);
-		const canvasFile = this.app.vault.getFileByPath(workflow.canvasPath);
-		if (canvasFile) {
-			await this.app.workspace.getLeaf(true).openFile(canvasFile);
-		}
+			const workflow = await this.plugin.workflowManager.createWorkflow(name);
+			const canvasFile = this.app.vault.getFileByPath(workflow.canvasPath);
+			if (canvasFile) {
+				await this.app.workspace.getLeaf(true).openFile(canvasFile);
+			}
 
-		this.close();
-		return true;
-	}
-
-	private async addTask(taskName: string): Promise<boolean> {
-		if (!this.plugin.workflowManager) {
-			new Notice("Ironflow workflow services are not available.");
-			return false;
-		}
-
-		if (!this.activeWorkflowName) {
-			new Notice("Open a workflow canvas before adding a task.");
-			return false;
-		}
-
-		if (!this.selectedTemplateName) {
-			new Notice("Select a template before adding a task.");
-			return false;
-		}
-
-		const workflow = await this.plugin.workflowManager.getWorkflow(
-			this.activeWorkflowName
-		);
-		if (!workflow) {
-			new Notice(`Workflow "${this.activeWorkflowName}" was not found.`);
-			return false;
-		}
-
-		if (workflow.tasks.some((task) => task.name === taskName)) {
+			this.close();
+			return true;
+		} catch (error) {
 			new Notice(
-				`Task "${taskName}" already exists in workflow "${this.activeWorkflowName}".`
+				`Failed to create workflow: ${
+					error instanceof Error ? error.message : "Unknown error"
+				}`
 			);
 			return false;
 		}
+	}
 
-		await this.plugin.workflowManager.addTaskToWorkflow(
-			this.activeWorkflowName,
-			taskName,
-			this.selectedTemplateName
-		);
-		this.close();
-		return true;
+	private async addTask(taskName: string): Promise<boolean> {
+		try {
+			if (!this.plugin.workflowManager) {
+				new Notice("Ironflow workflow services are not available.");
+				return false;
+			}
+
+			if (!this.activeWorkflowName) {
+				new Notice("Open a workflow canvas before adding a task.");
+				return false;
+			}
+
+			if (!this.selectedTemplateName) {
+				new Notice("Select a template before adding a task.");
+				return false;
+			}
+
+			const workflow = await this.plugin.workflowManager.getWorkflow(
+				this.activeWorkflowName
+			);
+			if (!workflow) {
+				new Notice(`Workflow "${this.activeWorkflowName}" was not found.`);
+				return false;
+			}
+
+			if (workflow.tasks.some((task) => task.name === taskName)) {
+				new Notice(
+					`Task "${taskName}" already exists in workflow "${this.activeWorkflowName}".`
+				);
+				return false;
+			}
+
+			await this.plugin.workflowManager.addTaskToWorkflow(
+				this.activeWorkflowName,
+				taskName,
+				this.selectedTemplateName
+			);
+			this.close();
+			return true;
+		} catch (error) {
+			new Notice(
+				`Failed to add task: ${
+					error instanceof Error ? error.message : "Unknown error"
+				}`
+			);
+			return false;
+		}
 	}
 }
 
