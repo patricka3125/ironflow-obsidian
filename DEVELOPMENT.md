@@ -22,8 +22,8 @@ Optional but recommended:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/patricka3125/ironflow-local-rest-api.git
-cd ironflow-local-rest-api
+git clone https://github.com/patricka3125/ironflow-obsidian.git
+cd ironflow-obsidian
 ```
 
 ### 2. Install dependencies
@@ -38,10 +38,10 @@ Create a symlink from the project directory into your vault's plugins folder:
 
 ```bash
 # Linux / macOS
-ln -s /path/to/ironflow-local-rest-api /path/to/dev-vault/.obsidian/plugins/ironflow-local-rest-api
+ln -s /path/to/ironflow-obsidian /path/to/dev-vault/.obsidian/plugins/ironflow-obsidian
 
 # Windows (run as Administrator)
-mklink /D "C:\path\to\dev-vault\.obsidian\plugins\ironflow-local-rest-api" "C:\path\to\ironflow-local-rest-api"
+mklink /D "C:\path\to\dev-vault\.obsidian\plugins\ironflow-obsidian" "C:\path\to\ironflow-obsidian"
 ```
 
 ### 4. Enable the plugin
@@ -105,7 +105,7 @@ Use `console.log()` in your plugin code — output appears in the developer cons
 
 ```javascript
 // Inspect the plugin instance
-app.plugins.plugins["ironflow-local-rest-api"]
+app.plugins.plugins["ironflow-obsidian"]
 
 // Check if Templater is available
 app.plugins.getPlugin("templater-obsidian")
@@ -143,7 +143,7 @@ The `-k` flag is needed because the Local REST API uses a self-signed certificat
 ## Project Structure
 
 ```
-ironflow-local-rest-api/
+ironflow-obsidian/
 ├── src/                        # Source code
 │   ├── main.ts                 # Plugin entry point
 │   ├── types.ts                # Shared interfaces

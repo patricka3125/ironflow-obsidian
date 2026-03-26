@@ -1,5 +1,5 @@
 {
-	"name": "ironflow-local-rest-api",
+	"name": "ironflow-obsidian",
 	"version": "1.0.0",
 	"description": "Ironflow workflow definition tools for Obsidian Local REST API.",
 	"main": "main.js",
