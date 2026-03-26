@@ -38,6 +38,7 @@ export class WorkflowCommandModal extends Modal {
 	 */
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
+		this.modalEl.addClass("ironflow-modal");
 		this.titleEl.setText(
 			this.mode === "create-workflow" ? "New Workflow" : "Add Task"
 		);

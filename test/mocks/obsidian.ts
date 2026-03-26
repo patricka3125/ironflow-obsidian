@@ -453,6 +453,11 @@ export class Setting {
 		return this;
 	}
 
+	setClass(cls: string): this {
+		this.settingEl.addClass(cls);
+		return this;
+	}
+
 	setDesc(desc: string): this {
 		this.desc = desc;
 		this.settingEl.createDiv().setText(desc);

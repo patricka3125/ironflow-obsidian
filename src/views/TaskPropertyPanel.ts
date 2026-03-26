@@ -108,11 +108,12 @@ export class TaskPropertyPanel extends ItemView {
 		}
 
 		this.containerEl.empty();
-		this.containerEl.createDiv().setText(task.name);
+		this.containerEl.addClass("ironflow-task-panel");
+		this.containerEl.createDiv({ cls: "ironflow-task-name" }).setText(task.name);
 		await this.renderCoreFields(task);
 		await this.renderDependencySection(task, "ironflow-depends-on", "Depends on");
 		await this.renderDependencySection(task, "ironflow-next-tasks", "Next tasks");
-		this.containerEl.createEl("hr");
+		this.containerEl.createEl("hr", { cls: "ironflow-divider" });
 		await this.renderTemplateFields(task);
 	}
 
@@ -192,8 +193,9 @@ export class TaskPropertyPanel extends ItemView {
 
 	private renderEmptyState(): void {
 		this.containerEl.empty();
+		this.containerEl.addClass("ironflow-task-panel");
 		this.containerEl
-			.createDiv()
+			.createDiv({ cls: "ironflow-empty-state" })
 			.setText("Select a task node on a canvas to edit its properties");
 	}
 
@@ -223,13 +225,16 @@ export class TaskPropertyPanel extends ItemView {
 			.map((link) => getTaskNameFromLink(link))
 			.filter((name): name is string => Boolean(name));
 
-		this.containerEl.createDiv().setText(label);
+		this.containerEl.createDiv({ cls: "ironflow-section-label" }).setText(label);
 		if (linkedTaskNames.length === 0) {
-			this.containerEl.createDiv().setText(`No ${label.toLowerCase()} configured.`);
+			this.containerEl
+				.createDiv({ cls: "ironflow-empty-hint" })
+				.setText(`No ${label.toLowerCase()} configured.`);
 		}
 
 		for (const linkedTaskName of linkedTaskNames) {
 			new Setting(this.containerEl)
+				.setClass("ironflow-dependency-row")
 				.setName(linkedTaskName)
 				.addButton((button) =>
 					button.setButtonText("Remove").onClick(() => {
@@ -242,6 +247,7 @@ export class TaskPropertyPanel extends ItemView {
 			siblingTasks.find((candidate) => !linkedTaskNames.includes(candidate.name))?.name ??
 			"";
 		new Setting(this.containerEl)
+			.setClass("ironflow-dependency-add")
 			.setName(`Add ${label.toLowerCase()}`)
 			.addDropdown((dropdown) => {
 				for (const siblingTask of siblingTasks) {
@@ -275,6 +281,11 @@ export class TaskPropertyPanel extends ItemView {
 	private async renderTemplateFields(task: IronflowTask): Promise<void> {
 		const templateName = task.frontmatter["ironflow-template"];
 		const fieldSchema = this.plugin.templateRegistry?.getFieldSchema(templateName) ?? [];
+		if (fieldSchema.length > 0) {
+			this.containerEl
+				.createDiv({ cls: "ironflow-section-label" })
+				.setText("Template fields");
+		}
 		for (const field of fieldSchema) {
 			const currentValue = task.frontmatter[field.key] ?? field.defaultValue;
 			if (typeof currentValue === "string" && !currentValue.includes("\n")) {
