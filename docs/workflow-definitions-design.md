@@ -9,8 +9,8 @@ Ironflow is an Obsidian plugin that extends the [obsidian-local-rest-api](https:
 - Define reusable workflows consisting of multiple task templates
 - Visualize workflows as Obsidian Canvas files with dependency arrows
 - Derive tasks from existing Templater templates with editable frontmatter fields
-- Expose workflow definitions via REST API for external tooling
 - Provide a side panel for configuring task properties and dependencies
+- Expose workflow definitions via REST API for external tooling (deferred — see implementation plan Phase 5)
 
 ### 1.2 Non-Goals (Future Phases)
 
@@ -677,7 +677,9 @@ Obsidian `Modal` subclass for creating workflows and adding tasks.
 - On confirm: calls `WorkflowManager.addTaskToWorkflow()`
 - Pre-selects the current active workflow if a canvas is open
 
-#### `api/routes.ts` — REST API Endpoints
+#### `api/routes.ts` — REST API Endpoints (Deferred)
+
+> **Note**: This module is deferred to a future phase. The design below is retained for reference when implementation begins. A `/ironflow/status/` health-check route is already wired up in `main.ts` as a proof of the integration pattern.
 
 All routes are prefixed with `/ironflow/`.
 
