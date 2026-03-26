@@ -11,8 +11,8 @@ Ironflow is an Obsidian plugin that turns your vault into a workflow orchestrati
 ## Installation
 
 ```bash
-git clone https://github.com/patricka3125/ironflow-local-rest-api.git
-cd ironflow-local-rest-api
+git clone https://github.com/patricka3125/ironflow-obsidian.git
+cd ironflow-obsidian
 npm install
 npm run build
 ```
@@ -20,10 +20,10 @@ npm run build
 Link into your vault:
 
 ```bash
-ln -s /path/to/ironflow-local-rest-api /path/to/your-vault/.obsidian/plugins/ironflow-local-rest-api
+ln -s /path/to/ironflow-obsidian /path/to/your-vault/.obsidian/plugins/ironflow-obsidian
 ```
 
-Then in Obsidian: **Settings > Community plugins > enable Ironflow Local REST API**.
+Then in Obsidian: **Settings > Community plugins > enable ironflow-obsidian**.
 
 ## Setup
 
@@ -39,7 +39,7 @@ Then in Obsidian: **Settings > Community plugins > enable Ironflow Local REST AP
     ```
 
 3. Set Templater's template folder location to `Templates` in its settings.
-4. Optionally configure Ironflow's **Workflow folder** and **Template folder** in Settings > Ironflow Local REST API (defaults: `Workflows` and `Templates`).
+4. Optionally configure Ironflow's **Workflow folder** and **Template folder** in Settings > ironflow-obsidian (defaults: `Workflows` and `Templates`).
 
 ## Quickstart
 

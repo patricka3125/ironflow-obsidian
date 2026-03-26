@@ -406,7 +406,7 @@ describe("Workflow UI", () => {
 		app.metadataCache.setFrontmatter(templateFile.path, { provider: "claude_code" });
 
 		const plugin = new IronflowPlugin(app as never, {
-			id: "ironflow-local-rest-api",
+			id: "ironflow-obsidian",
 			version: "1.0.0",
 			name: "Ironflow",
 		} as never);
