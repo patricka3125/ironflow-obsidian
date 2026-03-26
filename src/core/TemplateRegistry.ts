@@ -75,6 +75,8 @@ export class TemplateRegistry {
 		}
 
 		this.eventRegistrations.length = 0;
+		this.templates.clear();
+		this.templateNamesByPath.clear();
 		this.watchersRegistered = false;
 	}
 
@@ -206,7 +208,8 @@ export class TemplateRegistry {
 		cache: CachedMetadata | null
 	): Promise<Record<string, unknown> | null> {
 		if (cache?.frontmatter && isRecord(cache.frontmatter)) {
-			return { ...cache.frontmatter };
+			const { position: _position, ...userFields } = cache.frontmatter;
+			return Object.keys(userFields).length > 0 ? deepCloneRecord(userFields) : null;
 		}
 
 		const content = await this.app.vault.cachedRead(file);
@@ -277,7 +280,7 @@ function cloneTemplateSchema(template: TemplateSchema): TemplateSchema {
 function cloneTemplateField(field: TemplateField): TemplateField {
 	return {
 		key: field.key,
-		defaultValue: field.defaultValue,
+		defaultValue: deepCloneValue(field.defaultValue),
 	};
 }
 
@@ -297,4 +300,16 @@ function isFolder(file: TAbstractFile | null): file is TFolder {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function deepCloneRecord(value: Record<string, unknown>): Record<string, unknown> {
+	return deepCloneValue(value) as Record<string, unknown>;
+}
+
+function deepCloneValue<T>(value: T): T {
+	if (typeof structuredClone === "function") {
+		return structuredClone(value);
+	}
+
+	return JSON.parse(JSON.stringify(value)) as T;
 }

@@ -92,7 +92,17 @@ class FakeMetadataCache extends FakeEmitter {
 
 	getFileCache(file: FakeFile): { frontmatter?: Record<string, unknown> } | null {
 		const frontmatter = this.cacheByPath.get(file.path);
-		return frontmatter ? { frontmatter } : null;
+		return frontmatter
+			? {
+					frontmatter: {
+						...frontmatter,
+						position: {
+							start: { line: 0, col: 0, offset: 0 },
+							end: { line: 3, col: 0, offset: 50 },
+						},
+					},
+			  }
+			: null;
 	}
 }
 
@@ -122,6 +132,11 @@ describe("TemplateRegistry", () => {
 				],
 			},
 		]);
+		expect(
+			registry
+				.getTemplates()
+				.flatMap((template) => template.fields.map((field) => field.key))
+		).not.toContain("position");
 	});
 
 	it("returns one template and its field schema by name", async () => {
@@ -265,6 +280,31 @@ Body`,
 		await registry.initialize();
 
 		expect(registry.getTemplate("Notes")).toBeNull();
+	});
+
+	it("stops responding to events after dispose", async () => {
+		const harness = createRegistryHarness();
+		const registry = new TemplateRegistry(
+			harness.app as never,
+			harness.templateFolder.path
+		);
+
+		await registry.initialize();
+		registry.dispose();
+
+		const addedTemplate = addTemplateFile(
+			harness,
+			"Templates/Disposed Template.md",
+			`---
+after: true
+---
+Body`,
+			{ after: true }
+		);
+		harness.app.vault.trigger("create", addedTemplate);
+		await flushPromises();
+
+		expect(registry.getTemplates()).toEqual([]);
 	});
 });
 
