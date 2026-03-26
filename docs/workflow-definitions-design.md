@@ -177,7 +177,86 @@ For Phase 1, the agent profile field on task templates is a plain text string (n
 
 ---
 
-## 4. File & Data Model
+## 4. Development Conventions
+
+### 4.1 TypeScript Configuration
+
+Enable full strict mode in `tsconfig.json`. The current config has `noImplicitAny` and `strictNullChecks` individually, but the new codebase should use `"strict": true` which enables all strict checks (`noImplicitAny`, `strictNullChecks`, `strictFunctionTypes`, `strictBindCallApply`, `noImplicitThis`, `alwaysStrict`). This is important for the frontmatter parsing layer where values are frequently `unknown` or `undefined`.
+
+Update the include path and module target to reflect the `src/` restructure:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": ".",
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "module": "ESNext",
+    "target": "ES6",
+    "allowJs": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "isolatedModules": true,
+    "lib": ["DOM", "ES5", "ES6", "ES7"]
+  },
+  "include": ["src/**/*.ts"]
+}
+```
+
+### 4.2 Project Restructure
+
+The current `main.ts` sits at the project root. All source code moves to `src/`, with `src/main.ts` as the new entry point. The esbuild config must be updated accordingly:
+
+```javascript
+// esbuild.config.mjs — change entryPoints
+entryPoints: ["src/main.ts"],
+```
+
+The output remains `main.js` at the project root (Obsidian expects this).
+
+### 4.3 Package Manager
+
+**npm** — no change from current setup. Bun offers no meaningful benefit here since:
+- Bundling is handled by esbuild (not Bun's bundler)
+- Runtime is Obsidian's Electron process (not Bun's runtime)
+- The Obsidian plugin ecosystem standardizes on npm
+- `package-lock.json` is already present
+
+### 4.4 No Additional UI Frameworks
+
+Obsidian's built-in UI primitives are sufficient for all views in this plugin:
+- `Setting` — form fields (text inputs, dropdowns, toggles, text areas)
+- `ItemView` — side panel lifecycle and container
+- `Modal` — popup dialogs for user input
+- `Notice` — toast notifications
+
+Adding React or any other UI framework would increase bundle size, add build complexity, and conflict with Obsidian's DOM management. Not needed.
+
+### 4.5 Frontmatter Manipulation
+
+Obsidian's `MetadataCache` provides **read-only** access to parsed frontmatter. Writing frontmatter requires raw string manipulation:
+
+1. Read the file content via `app.vault.read(file)`
+2. Extract the YAML block between the opening and closing `---` delimiters
+3. Parse the YAML string into an object (use a lightweight YAML library or manual parsing)
+4. Modify the object
+5. Serialize back to YAML
+6. Replace the original frontmatter block in the file content
+7. Write back via `app.vault.modify(file, newContent)`
+
+A small utility module (`src/core/frontmatter.ts`) encapsulates this logic. It must:
+- Preserve non-frontmatter content exactly (template body, Templater expressions)
+- Handle edge cases: missing frontmatter, empty frontmatter, non-string values (arrays, numbers)
+- Not introduce trailing whitespace or formatting changes outside the frontmatter block
+
+### 4.6 Dependency Updates
+
+The current `package.json` has outdated dependencies (TypeScript 4.7, `@types/node` 16). These should be updated at implementation time to current stable versions. This is an implementation task, not an architectural concern, but noted here for completeness.
+
+---
+
+## 5. File & Data Model
 
 ### 4.1 Directory Structure
 
@@ -275,9 +354,9 @@ interface IronflowSettings {
 
 ---
 
-## 5. Architecture
+## 6. Architecture
 
-### 5.1 Module Structure
+### 6.1 Module Structure
 
 ```
 src/
@@ -301,7 +380,7 @@ src/
     └── SettingsTab.ts             # Plugin settings tab
 ```
 
-### 5.2 Module Responsibilities
+### 6.2 Module Responsibilities
 
 #### `main.ts` — Plugin Entry Point
 
@@ -699,9 +778,9 @@ export class IronflowSettingsTab extends PluginSettingTab {
 
 ---
 
-## 6. User Journey
+## 7. User Journey
 
-### 6.1 Create a Workflow
+### 7.1 Create a Workflow
 
 1. Open command palette → **"Ironflow: New Workflow"**
 2. Enter workflow name (e.g., "feature-development")
@@ -710,7 +789,7 @@ export class IronflowSettingsTab extends PluginSettingTab {
    - `Workflows/feature-development/` (empty folder)
 4. Canvas file opens automatically
 
-### 6.2 Add Tasks to a Workflow
+### 7.2 Add Tasks to a Workflow
 
 1. With a workflow canvas open, command palette → **"Ironflow: Add Task"**
 2. Modal shows:
@@ -721,7 +800,7 @@ export class IronflowSettingsTab extends PluginSettingTab {
    - File node added to the canvas JSON
    - Canvas refreshes to show the new node
 
-### 6.3 Configure a Task
+### 7.3 Configure a Task
 
 1. Click a task file node on the canvas
 2. The `file-open` event fires → side panel loads the task
@@ -739,11 +818,11 @@ export class IronflowSettingsTab extends PluginSettingTab {
    - Reciprocal update on the linked task (if A depends on B, B's `ironflow-next-tasks` gets A)
    - `CanvasWriter.syncEdges()` updates the `.canvas` file with correct arrows
 
-### 6.4 Review Workflow
+### 7.4 Review Workflow
 
 Open the `.canvas` file in Obsidian. Task nodes are displayed as file cards, dependency arrows show execution order. The layout is manually arrangeable via standard canvas drag-and-drop.
 
-### 6.5 Query via REST API
+### 7.5 Query via REST API
 
 ```bash
 # List all workflows
@@ -758,7 +837,7 @@ curl http://localhost:27124/ironflow/templates/
 
 ---
 
-## 7. Data Flow Diagram
+## 8. Data Flow Diagram
 
 ```
                     ┌─────────────────────┐
@@ -797,9 +876,9 @@ curl http://localhost:27124/ironflow/templates/
 
 ---
 
-## 8. Commands & Events
+## 9. Commands & Events
 
-### 8.1 Registered Commands
+### 9.1 Registered Commands
 
 | Command ID | Label | Action |
 |------------|-------|--------|
@@ -807,7 +886,7 @@ curl http://localhost:27124/ironflow/templates/
 | `ironflow:add-task` | Ironflow: Add Task | Opens WorkflowCommandModal in add-task mode (infers active workflow from open canvas) |
 | `ironflow:open-task-panel` | Ironflow: Open Task Properties | Reveals the TaskPropertyPanel side panel |
 
-### 8.2 Event Listeners
+### 9.2 Event Listeners
 
 | Event | Source | Handler |
 |-------|--------|---------|
@@ -817,7 +896,7 @@ curl http://localhost:27124/ironflow/templates/
 
 ---
 
-## 9. Error Handling
+## 10. Error Handling
 
 | Scenario | Behavior |
 |----------|----------|
@@ -831,7 +910,7 @@ curl http://localhost:27124/ironflow/templates/
 
 ---
 
-## 10. Future Considerations
+## 11. Future Considerations
 
 These are intentionally out of scope for Phase 1 but influence the current design:
 
