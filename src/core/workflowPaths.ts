@@ -43,3 +43,44 @@ export function getPathBaseName(path: string): string {
 	const fileName = path.split("/").at(-1) ?? path;
 	return fileName.replace(/\.[^.]+$/, "");
 }
+
+/**
+ * Return the workflow name for a workflow canvas path.
+ */
+export function getWorkflowNameFromCanvasPath(
+	workflowFolder: string,
+	path: string
+): string | null {
+	const prefix = `${workflowFolder}/`;
+	if (!path.startsWith(prefix) || !path.endsWith(".canvas")) {
+		return null;
+	}
+
+	const relativePath = path.slice(prefix.length);
+	if (relativePath.includes("/")) {
+		return null;
+	}
+
+	return getPathBaseName(relativePath);
+}
+
+/**
+ * Return the workflow name for a workflow task path.
+ */
+export function getWorkflowNameFromTaskPath(
+	workflowFolder: string,
+	path: string
+): string | null {
+	const prefix = `${workflowFolder}/`;
+	if (!path.startsWith(prefix) || !path.endsWith(".md")) {
+		return null;
+	}
+
+	const relativePath = path.slice(prefix.length);
+	const [workflowName, ...remainingSegments] = relativePath.split("/");
+	if (!workflowName || remainingSegments.length !== 1) {
+		return null;
+	}
+
+	return workflowName;
+}
