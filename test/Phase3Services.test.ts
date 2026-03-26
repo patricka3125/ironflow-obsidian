@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CanvasWriter } from "../src/core/CanvasWriter";
 import { parseFrontmatter, updateFrontmatter } from "../src/core/frontmatter";
 import { TaskManager } from "../src/core/TaskManager";
+import { getTaskNameFromLink } from "../src/core/taskUtils";
 import { WorkflowManager } from "../src/core/WorkflowManager";
 import type { TemplateSchema } from "../src/types";
 
@@ -189,6 +190,14 @@ class FakeVault {
 }
 
 describe("Phase 3 services", () => {
+	it("parses task names from supported wikilink formats", () => {
+		expect(getTaskNameFromLink("[[task-a]]")).toBe("task-a");
+		expect(getTaskNameFromLink("[[folder/task-a|Display]]")).toBe("task-a");
+		expect(getTaskNameFromLink("[[task-a#Heading]]")).toBe("task-a");
+		expect(getTaskNameFromLink("[[]]")).toBeNull();
+		expect(getTaskNameFromLink("task-a")).toBeNull();
+	});
+
 	it("creates, reads, updates, lists, and deletes workflow task files", async () => {
 		const app = createFakeApp();
 		const settings = {
@@ -409,6 +418,22 @@ Line 3`
 		]);
 	});
 
+	it("throws a descriptive error when a canvas file contains invalid JSON", async () => {
+		const app = createFakeApp();
+		const settings = {
+			workflowFolder: "Workflows",
+			templateFolder: "Templates",
+		};
+		app.vault.ensureFolder("Workflows");
+		app.vault.ensureFolder("Workflows/alpha");
+		app.vault.writeFile("Workflows/alpha.canvas", "{ invalid json");
+
+		const canvasWriter = new CanvasWriter(app as never, settings);
+		await expect(canvasWriter.syncEdges("alpha")).rejects.toThrow(
+			/contains invalid JSON/
+		);
+	});
+
 	it("manages workflow creation, task nodes, collisions, cleanup, and deletion", async () => {
 		const app = createFakeApp();
 		const settings = {
@@ -531,6 +556,38 @@ Line 3`
 		await workflowManager.deleteWorkflow("alpha");
 		expect(app.vault.getFileByPath("Workflows/alpha.canvas")).toBeNull();
 		expect(app.vault.getFolderByPath("Workflows/alpha")).toBeNull();
+	});
+
+	it("creates nested workflow roots when the workflow folder has multiple segments", async () => {
+		const app = createFakeApp();
+		app.vault.ensureFolder("Projects");
+		const settings = {
+			workflowFolder: "Projects/Workflows/Active",
+			templateFolder: "Templates",
+		};
+		const taskManager = new TaskManager(
+			app as never,
+			createTemplateRegistryStub([]) as never,
+			settings
+		);
+		const canvasWriter = new CanvasWriter(app as never, settings);
+		const workflowManager = new WorkflowManager(
+			app as never,
+			taskManager,
+			canvasWriter,
+			settings
+		);
+
+		await workflowManager.createWorkflow("alpha");
+
+		expect(app.vault.getFolderByPath("Projects/Workflows")).not.toBeNull();
+		expect(app.vault.getFolderByPath("Projects/Workflows/Active")).not.toBeNull();
+		expect(
+			app.vault.getFolderByPath("Projects/Workflows/Active/alpha")
+		).not.toBeNull();
+		expect(
+			app.vault.getFileByPath("Projects/Workflows/Active/alpha.canvas")
+		).not.toBeNull();
 	});
 });
 

@@ -5,10 +5,15 @@ import {
 	Notice,
 	type TAbstractFile,
 	type TFile,
-	type TFolder,
 } from "obsidian";
 
 import { parseFrontmatter } from "./frontmatter";
+import {
+	isFolder,
+	isMarkdownFile,
+	isRecord,
+	listMarkdownFiles,
+} from "./vaultUtils";
 import type { TemplateField, TemplateSchema } from "../types";
 
 /**
@@ -252,23 +257,6 @@ export class TemplateRegistry {
 	}
 }
 
-function listMarkdownFiles(folder: TFolder): TFile[] {
-	const markdownFiles: TFile[] = [];
-
-	for (const child of folder.children) {
-		if (isFolder(child)) {
-			markdownFiles.push(...listMarkdownFiles(child));
-			continue;
-		}
-
-		if (isMarkdownFile(child)) {
-			markdownFiles.push(child);
-		}
-	}
-
-	return markdownFiles;
-}
-
 function cloneTemplateSchema(template: TemplateSchema): TemplateSchema {
 	return {
 		name: template.name,
@@ -282,24 +270,6 @@ function cloneTemplateField(field: TemplateField): TemplateField {
 		key: field.key,
 		defaultValue: deepCloneValue(field.defaultValue),
 	};
-}
-
-function isMarkdownFile(file: TAbstractFile | null): file is TFile {
-	return (
-		Boolean(file) &&
-		typeof file?.path === "string" &&
-		typeof (file as TFile).extension === "string" &&
-		(file as TFile).extension === "md" &&
-		typeof (file as TFile).basename === "string"
-	);
-}
-
-function isFolder(file: TAbstractFile | null): file is TFolder {
-	return Boolean(file) && Array.isArray((file as TFolder).children);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function deepCloneRecord(value: Record<string, unknown>): Record<string, unknown> {

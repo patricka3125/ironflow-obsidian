@@ -4,6 +4,7 @@ import { getAPI, type LocalRestApiPublicApi } from "obsidian-local-rest-api";
 import { CanvasWriter } from "./core/CanvasWriter";
 import { TaskManager } from "./core/TaskManager";
 import { TemplateRegistry } from "./core/TemplateRegistry";
+import { isRecord } from "./core/vaultUtils";
 import { WorkflowManager } from "./core/WorkflowManager";
 import { IronflowSettingsTab } from "./settings/SettingsTab";
 import { DEFAULT_SETTINGS, type IronflowSettings } from "./types";
@@ -111,10 +112,6 @@ export default class IronflowPlugin extends Plugin {
 			});
 		});
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 declare module "obsidian" {

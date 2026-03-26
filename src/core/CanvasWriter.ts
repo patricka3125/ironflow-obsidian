@@ -3,6 +3,7 @@ import type { CanvasData, CanvasEdgeData } from "obsidian/canvas";
 
 import { parseFrontmatter } from "./frontmatter";
 import { buildIronflowTask, getTaskNameFromLink } from "./taskUtils";
+import { listMarkdownFiles, parseCanvasData } from "./vaultUtils";
 import {
 	getWorkflowCanvasPath,
 	getWorkflowTaskFolderPath,
@@ -126,50 +127,4 @@ export class CanvasWriter {
 			})
 		);
 	}
-}
-
-function parseCanvasData(content: string, filePath: string): CanvasData {
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(content);
-	} catch (error) {
-		console.error(`Ironflow failed to parse canvas JSON for "${filePath}".`, error);
-		throw new Error(`Canvas file "${filePath}" contains invalid JSON.`);
-	}
-
-	if (
-		typeof parsed !== "object" ||
-		parsed === null ||
-		!Array.isArray((parsed as CanvasData).nodes) ||
-		!Array.isArray((parsed as CanvasData).edges)
-	) {
-		throw new Error(`Canvas file "${filePath}" is not valid canvas data.`);
-	}
-
-	return parsed as CanvasData;
-}
-
-function listMarkdownFiles(folder: TFolder): TFile[] {
-	const markdownFiles: TFile[] = [];
-
-	for (const child of folder.children) {
-		if (isFolder(child)) {
-			markdownFiles.push(...listMarkdownFiles(child));
-			continue;
-		}
-
-		if (isMarkdownFile(child)) {
-			markdownFiles.push(child);
-		}
-	}
-
-	return markdownFiles;
-}
-
-function isMarkdownFile(file: TAbstractFile): file is TFile {
-	return "extension" in file && file.extension === "md";
-}
-
-function isFolder(file: TAbstractFile): file is TFolder {
-	return "children" in file;
 }

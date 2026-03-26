@@ -4,8 +4,8 @@ import { parseFrontmatter, stripFrontmatter, updateFrontmatter } from "./frontma
 import type { TemplateRegistry } from "./TemplateRegistry";
 import {
 	buildIronflowTask,
-	normalizeIronflowTaskFrontmatter,
 } from "./taskUtils";
+import { isFolder, isMarkdownFile, listMarkdownFiles } from "./vaultUtils";
 import {
 	getWorkflowTaskFolderPath,
 	getWorkflowTaskPath,
@@ -149,28 +149,8 @@ export class TaskManager {
 			})
 		);
 
-		return tasks.map((task) => ({
-			...task,
-			frontmatter: normalizeIronflowTaskFrontmatter(task.frontmatter),
-		}));
+		return tasks;
 	}
-}
-
-function listMarkdownFiles(folder: TFolder): TFile[] {
-	const markdownFiles: TFile[] = [];
-
-	for (const child of folder.children) {
-		if (isFolder(child)) {
-			markdownFiles.push(...listMarkdownFiles(child));
-			continue;
-		}
-
-		if (isMarkdownFile(child)) {
-			markdownFiles.push(child);
-		}
-	}
-
-	return markdownFiles;
 }
 
 function removeManagedIronflowFields(
@@ -183,12 +163,4 @@ function removeManagedIronflowFields(
 	delete sanitizedFrontmatter["ironflow-depends-on"];
 	delete sanitizedFrontmatter["ironflow-next-tasks"];
 	return sanitizedFrontmatter;
-}
-
-function isMarkdownFile(file: TAbstractFile): file is TFile {
-	return "extension" in file && file.extension === "md";
-}
-
-function isFolder(file: TAbstractFile): file is TFolder {
-	return "children" in file;
 }

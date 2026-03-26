@@ -4,6 +4,7 @@ import type { CanvasData, CanvasFileData } from "obsidian/canvas";
 import type { CanvasWriter } from "./CanvasWriter";
 import type { TaskManager } from "./TaskManager";
 import { getTaskNameFromLink } from "./taskUtils";
+import { isCanvasFile, readCanvasData } from "./vaultUtils";
 import {
 	getWorkflowCanvasPath,
 	getWorkflowRootPath,
@@ -223,12 +224,20 @@ export class WorkflowManager {
 				continue;
 			}
 
+			const originalDependsOn = siblingTask.frontmatter["ironflow-depends-on"];
+			const originalNextTasks = siblingTask.frontmatter["ironflow-next-tasks"];
 			const dependsOn = siblingTask.frontmatter["ironflow-depends-on"].filter(
 				(link) => getTaskNameFromLink(link) !== taskToRemove.name
 			);
 			const nextTasks = siblingTask.frontmatter["ironflow-next-tasks"].filter(
 				(link) => getTaskNameFromLink(link) !== taskToRemove.name
 			);
+			const dependenciesChanged =
+				dependsOn.length !== originalDependsOn.length ||
+				nextTasks.length !== originalNextTasks.length;
+			if (!dependenciesChanged) {
+				continue;
+			}
 
 			await this.taskManager.updateTaskFrontmatter(siblingTask.filePath, {
 				"ironflow-depends-on": dependsOn,
@@ -277,28 +286,6 @@ async function ensureFolderExists(app: App, folderPath: string): Promise<void> {
 	}
 }
 
-async function readCanvasData(app: App, file: TFile): Promise<CanvasData> {
-	const content = await app.vault.read(file);
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(content);
-	} catch (error) {
-		console.error(`Ironflow failed to parse canvas JSON for "${file.path}".`, error);
-		throw new Error(`Canvas file "${file.path}" contains invalid JSON.`);
-	}
-
-	if (
-		typeof parsed !== "object" ||
-		parsed === null ||
-		!Array.isArray((parsed as CanvasData).nodes) ||
-		!Array.isArray((parsed as CanvasData).edges)
-	) {
-		throw new Error(`Canvas file "${file.path}" is not valid canvas data.`);
-	}
-
-	return parsed as CanvasData;
-}
-
 function getNextNodePosition(
 	nodes: CanvasFileData[]
 ): { x: number; y: number } {
@@ -319,10 +306,6 @@ function getNextNodePosition(
 
 function createCanvasNodeId(): string {
 	return Math.random().toString(16).slice(2, 18).padEnd(16, "0");
-}
-
-function isCanvasFile(file: TAbstractFile): file is TFile {
-	return "extension" in file && file.extension === "canvas";
 }
 
 function isFileNode(node: CanvasData["nodes"][number]): node is CanvasFileData {
