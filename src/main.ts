@@ -1,7 +1,10 @@
 import { Notice, Plugin } from "obsidian";
 import { getAPI, type LocalRestApiPublicApi } from "obsidian-local-rest-api";
 
+import { CanvasWriter } from "./core/CanvasWriter";
+import { TaskManager } from "./core/TaskManager";
 import { TemplateRegistry } from "./core/TemplateRegistry";
+import { WorkflowManager } from "./core/WorkflowManager";
 import { IronflowSettingsTab } from "./settings/SettingsTab";
 import { DEFAULT_SETTINGS, type IronflowSettings } from "./types";
 
@@ -18,6 +21,9 @@ export default class IronflowPlugin extends Plugin {
 	private api: RegisteredLocalRestApi | null = null;
 	settings: IronflowSettings = { ...DEFAULT_SETTINGS };
 	templateRegistry: TemplateRegistry | null = null;
+	canvasWriter: CanvasWriter | null = null;
+	taskManager: TaskManager | null = null;
+	workflowManager: WorkflowManager | null = null;
 
 	/**
 	 * Load plugin resources and register integrations.
@@ -30,6 +36,18 @@ export default class IronflowPlugin extends Plugin {
 			this.settings.templateFolder
 		);
 		await this.templateRegistry.initialize();
+		this.canvasWriter = new CanvasWriter(this.app, this.settings);
+		this.taskManager = new TaskManager(
+			this.app,
+			this.templateRegistry,
+			this.settings
+		);
+		this.workflowManager = new WorkflowManager(
+			this.app,
+			this.taskManager,
+			this.canvasWriter,
+			this.settings
+		);
 
 		this.ensureTemplaterIsEnabled();
 		this.tryRegisterRoutes();
@@ -46,6 +64,9 @@ export default class IronflowPlugin extends Plugin {
 	 * Tear down plugin-managed resources.
 	 */
 	onunload(): void {
+		this.workflowManager = null;
+		this.taskManager = null;
+		this.canvasWriter = null;
 		this.templateRegistry?.dispose();
 		this.templateRegistry = null;
 		this.api?.unregister?.();

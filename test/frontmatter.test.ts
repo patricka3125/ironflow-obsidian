@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	parseFrontmatter,
+	stripFrontmatter,
 	updateFrontmatter,
 } from "../src/core/frontmatter";
 
@@ -119,5 +120,18 @@ Line 3`;
 		expect(parseFrontmatter(updated)).toEqual({
 			"ironflow-depends-on": ["[[task-a]]", "[[task-b]]"],
 		});
+	});
+});
+
+describe("stripFrontmatter", () => {
+	it("removes only the frontmatter block and preserves the body", () => {
+		const markdown = `---
+title: "Build Feature"
+---
+Line 1
+<% tp.file.title %>
+Line 3`;
+
+		expect(stripFrontmatter(markdown)).toBe("Line 1\n<% tp.file.title %>\nLine 3");
 	});
 });

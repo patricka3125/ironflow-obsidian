@@ -59,6 +59,13 @@ export function updateFrontmatter(
 	return `${frontmatterBlock}${separator}${content}`;
 }
 
+/**
+ * Remove the frontmatter block from markdown while preserving the body exactly.
+ */
+export function stripFrontmatter(content: string): string {
+	return content.replace(FRONTMATTER_PATTERN, "");
+}
+
 function serializeFrontmatter(frontmatter: Record<string, unknown>): string {
 	if (Object.keys(frontmatter).length === 0) {
 		return `${FRONTMATTER_DELIMITER}\n${FRONTMATTER_DELIMITER}\n`;

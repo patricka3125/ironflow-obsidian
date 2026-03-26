@@ -160,6 +160,8 @@ Wire `TemplateRegistry` into `src/main.ts` so it initializes on plugin load.
 
 ## Phase 3: Workflow & Task Management
 
+Status: Complete
+
 Depends on **Phase 2** (TemplateRegistry must be functional). This phase implements the core data layer for creating, reading, updating, and deleting workflows and tasks, and for syncing dependency edges to canvas files.
 
 ### Task 3.1: Implement CanvasWriter
@@ -173,12 +175,12 @@ Create `src/core/CanvasWriter.ts` that computes dependency edges from task front
 - Edge rendering: `fromSide: "right"`, `toSide: "left"`, `toEnd: "arrow"`
 
 **Acceptance Criteria**:
-- [ ] `computeEdges()` produces correct edges for a set of tasks with known dependencies
-- [ ] `computeEdges()` returns an empty array when no tasks have dependencies
-- [ ] `syncEdges()` writes valid JSON Canvas format to the `.canvas` file
-- [ ] Existing non-Ironflow edges in the canvas (edges without `ironflow-edge-` prefix) are preserved after sync
-- [ ] Running `syncEdges()` twice with the same data produces identical output (idempotent)
-- [ ] Removing a dependency from frontmatter and re-syncing removes the corresponding edge
+- [x] `computeEdges()` produces correct edges for a set of tasks with known dependencies
+- [x] `computeEdges()` returns an empty array when no tasks have dependencies
+- [x] `syncEdges()` writes valid JSON Canvas format to the `.canvas` file
+- [x] Existing non-Ironflow edges in the canvas (edges without `ironflow-edge-` prefix) are preserved after sync
+- [x] Running `syncEdges()` twice with the same data produces identical output (idempotent)
+- [x] Removing a dependency from frontmatter and re-syncing removes the corresponding edge
 
 ### Task 3.2: Implement TaskManager
 
@@ -196,13 +198,13 @@ Create `src/core/TaskManager.ts` for CRUD operations on task template markdown f
 - Implement `getWorkflowTasks(workflowName)`: list all `.md` files in the workflow folder, return as `IronflowTask[]`
 
 **Acceptance Criteria**:
-- [ ] `createTask()` creates a markdown file at the correct path with merged Ironflow + template frontmatter
-- [ ] Created task file contains the source template's body content (including Templater expressions)
-- [ ] `ironflow-depends-on` and `ironflow-next-tasks` initialize as empty arrays
-- [ ] `getTask()` returns a correctly typed `IronflowTask` with all frontmatter fields parsed
-- [ ] `updateTaskFrontmatter()` modifies only the specified fields without altering other fields or body content
-- [ ] `deleteTask()` removes the file from the vault
-- [ ] `getWorkflowTasks()` returns all tasks in the workflow folder, excluding non-markdown files
+- [x] `createTask()` creates a markdown file at the correct path with merged Ironflow + template frontmatter
+- [x] Created task file contains the source template's body content (including Templater expressions)
+- [x] `ironflow-depends-on` and `ironflow-next-tasks` initialize as empty arrays
+- [x] `getTask()` returns a correctly typed `IronflowTask` with all frontmatter fields parsed
+- [x] `updateTaskFrontmatter()` modifies only the specified fields without altering other fields or body content
+- [x] `deleteTask()` removes the file from the vault
+- [x] `getWorkflowTasks()` returns all tasks in the workflow folder, excluding non-markdown files
 
 ### Task 3.3: Implement WorkflowManager
 
@@ -231,16 +233,16 @@ Create `src/core/WorkflowManager.ts` that orchestrates workflow-level operations
 - Implement `deleteWorkflow(name)`: delete `.canvas` file and task folder recursively
 
 **Acceptance Criteria**:
-- [ ] `createWorkflow()` creates both the `.canvas` file and task folder
-- [ ] The created `.canvas` file contains valid JSON Canvas with empty nodes/edges arrays
-- [ ] `getWorkflow()` returns a complete workflow object with tasks and their canvas node IDs
-- [ ] `listWorkflows()` returns all workflows in the configured folder
-- [ ] `addTaskToWorkflow()` creates the task file and adds a file node to the canvas
-- [ ] Auto-positioning places new nodes to the right of existing nodes without overlap
-- [ ] `removeTaskFromWorkflow()` cleans up the canvas node, edges, sibling dependency references, and task file
-- [ ] `deleteWorkflow()` removes the canvas file and entire task folder
-- [ ] Workflow name collisions are detected and rejected with an error
-- [ ] Task name collisions within a workflow are detected and rejected with an error
+- [x] `createWorkflow()` creates both the `.canvas` file and task folder
+- [x] The created `.canvas` file contains valid JSON Canvas with empty nodes/edges arrays
+- [x] `getWorkflow()` returns a complete workflow object with tasks and their canvas node IDs
+- [x] `listWorkflows()` returns all workflows in the configured folder
+- [x] `addTaskToWorkflow()` creates the task file and adds a file node to the canvas
+- [x] Auto-positioning places new nodes to the right of existing nodes without overlap
+- [x] `removeTaskFromWorkflow()` cleans up the canvas node, edges, sibling dependency references, and task file
+- [x] `deleteWorkflow()` removes the canvas file and entire task folder
+- [x] Workflow name collisions are detected and rejected with an error
+- [x] Task name collisions within a workflow are detected and rejected with an error
 
 ### Task 3.4: Integrate Core Services into Plugin Lifecycle
 
@@ -252,9 +254,9 @@ Wire `CanvasWriter`, `TaskManager`, and `WorkflowManager` into `src/main.ts`.
 - Ensure correct initialization order: `TemplateRegistry` → `CanvasWriter` → `TaskManager` → `WorkflowManager`
 
 **Acceptance Criteria**:
-- [ ] All core services initialize without errors on plugin load
-- [ ] Services are accessible from the plugin instance for use by views and API routes
-- [ ] Plugin unload cleanly tears down all services (no lingering event listeners)
+- [x] All core services initialize without errors on plugin load
+- [x] Services are accessible from the plugin instance for use by views and API routes
+- [x] Plugin unload cleanly tears down all services (no lingering event listeners)
 
 ---
 
