@@ -55,6 +55,8 @@ Establish the new type definitions and pure utility functions that all subsequen
 
 ## Phase 2: Existing Code Compatibility
 
+Status: Complete (2026-03-29)
+
 ### Phase Goal
 
 Update existing modules so that definition-level operations correctly exclude instance files from the `instances/` subdirectory, and frontmatter normalization handles the new optional instance fields. No new features are added — this phase protects existing behavior.

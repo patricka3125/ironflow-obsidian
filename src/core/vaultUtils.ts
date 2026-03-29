@@ -32,12 +32,19 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Recursively list markdown files under one folder.
  */
-export function listMarkdownFiles(folder: TFolder): TFile[] {
+export function listMarkdownFiles(
+	folder: TFolder,
+	excludeFolderNames?: Set<string>
+): TFile[] {
 	const markdownFiles: TFile[] = [];
 
 	for (const child of folder.children) {
 		if (isFolder(child)) {
-			markdownFiles.push(...listMarkdownFiles(child));
+			if (excludeFolderNames?.has(child.name)) {
+				continue;
+			}
+
+			markdownFiles.push(...listMarkdownFiles(child, excludeFolderNames));
 			continue;
 		}
 

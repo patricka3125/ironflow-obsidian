@@ -94,6 +94,47 @@ Line 3`
 		expect(await taskManager.getTask(createdTask.filePath)).toBeNull();
 	});
 
+	it("excludes instance task files from workflow task listing", async () => {
+		const app = createFakeApp();
+		const settings = {
+			workflowFolder: "Workflows",
+			templateFolder: "Templates",
+		};
+		app.vault.writeFile(
+			"Workflows/alpha/task-a.md",
+			updateFrontmatter("# A", {
+				"ironflow-template": "Review",
+				"ironflow-workflow": "alpha",
+				"ironflow-agent-profile": "",
+				"ironflow-depends-on": [],
+				"ironflow-next-tasks": [],
+			})
+		);
+		app.vault.writeFile(
+			"Workflows/alpha/instances/run-a3f8/task-b.md",
+			updateFrontmatter("# B", {
+				"ironflow-template": "Review",
+				"ironflow-workflow": "alpha",
+				"ironflow-agent-profile": "",
+				"ironflow-depends-on": [],
+				"ironflow-next-tasks": [],
+				"ironflow-instance-id": "run-a3f8",
+				"ironflow-status": "open",
+			})
+		);
+
+		const taskManager = new TaskManager(
+			app as never,
+			createTemplateRegistryStub([]) as never,
+			settings
+		);
+
+		const workflowTasks = await taskManager.getWorkflowTasks("alpha");
+		expect(workflowTasks.map((task) => task.filePath)).toEqual([
+			"Workflows/alpha/task-a.md",
+		]);
+	});
+
 	it("computes and syncs ironflow edges while preserving user edges", async () => {
 		const app = createFakeApp();
 		const settings = {

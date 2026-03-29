@@ -1,4 +1,8 @@
-import type { IronflowTask, IronflowTaskFrontmatter } from "../types";
+import type {
+	IronflowTask,
+	IronflowTaskFrontmatter,
+	WorkflowInstanceTaskStatus,
+} from "../types";
 
 /**
  * Parse one markdown file into an Ironflow task object.
@@ -31,6 +35,14 @@ export function normalizeIronflowTaskFrontmatter(
 		),
 		"ironflow-depends-on": toStringArray(frontmatter["ironflow-depends-on"]),
 		"ironflow-next-tasks": toStringArray(frontmatter["ironflow-next-tasks"]),
+		...(frontmatter["ironflow-instance-id"] !== undefined && {
+			"ironflow-instance-id": toStringValue(
+				frontmatter["ironflow-instance-id"]
+			),
+		}),
+		...(frontmatter["ironflow-status"] !== undefined && {
+			"ironflow-status": toInstanceStatus(frontmatter["ironflow-status"]),
+		}),
 	};
 }
 
@@ -68,4 +80,13 @@ function toStringArray(value: unknown): string[] {
 	}
 
 	return value.filter((entry): entry is string => typeof entry === "string");
+}
+
+function toInstanceStatus(value: unknown): WorkflowInstanceTaskStatus {
+	return value === "open" ||
+		value === "pending" ||
+		value === "in-progress" ||
+		value === "done"
+		? value
+		: "pending";
 }
