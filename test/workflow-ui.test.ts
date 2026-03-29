@@ -506,7 +506,19 @@ describe("Workflow UI", () => {
 		expect(
 			getWorkflowNameFromTaskPath(
 				"Workflows",
+				"Workflows/alpha/instances/task-a.md"
+			)
+		).toBeNull();
+		expect(
+			getWorkflowNameFromTaskPath(
+				"Workflows",
 				"Workflows/alpha/nested/task-a.md"
+			)
+		).toBeNull();
+		expect(
+			getWorkflowNameFromTaskPath(
+				"Workflows",
+				"Workflows/alpha/other/run-a3f8/task-a.md"
 			)
 		).toBeNull();
 		expect(getWorkflowNameFromTaskPath("Workflows", "Workflows/alpha.canvas")).toBeNull();
