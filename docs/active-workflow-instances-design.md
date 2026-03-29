@@ -61,7 +61,7 @@ Instances are stored under a fixed `instances/` subdirectory within the workflow
 Instance directories are named using one of two strategies:
 
 1. **User-provided name**: Any valid folder name supplied by the caller (e.g., `sprint-1`, `hotfix-auth`).
-2. **Auto-generated fallback**: `run-<hex>` where `<hex>` is 4–6 random hexadecimal characters (e.g., `run-a3f8`, `run-0b7e2c`). Collisions are checked before creation.
+2. **Auto-generated fallback**: `run-<hex>` where `<hex>` is 4 random hexadecimal characters (e.g., `run-a3f8`). Collisions are checked before creation.
 
 ### 2.3 Impact on Existing Code
 

@@ -7,6 +7,15 @@ export interface IronflowSettings {
 }
 
 /**
+ * Status of a task within a workflow instance.
+ */
+export type WorkflowInstanceTaskStatus =
+	| "open"
+	| "pending"
+	| "in-progress"
+	| "done";
+
+/**
  * Frontmatter stored on Ironflow task template files.
  */
 export interface IronflowTaskFrontmatter {
@@ -39,15 +48,6 @@ export interface IronflowWorkflow {
 	taskFolderPath: string;
 	tasks: IronflowTask[];
 }
-
-/**
- * Status of a task within a workflow instance.
- */
-export type WorkflowInstanceTaskStatus =
-	| "open"
-	| "pending"
-	| "in-progress"
-	| "done";
 
 /**
  * An active workflow instance created from a workflow definition.

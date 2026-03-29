@@ -18,6 +18,12 @@ describe("workflow instance paths", () => {
 		);
 	});
 
+	it("builds instance paths under multi-segment workflow roots", () => {
+		expect(getInstancesFolderPath("Projects/Workflows/Active", "my-wf")).toBe(
+			"Projects/Workflows/Active/my-wf/instances"
+		);
+	});
+
 	it("builds a workflow instance directory path", () => {
 		expect(getInstancePath("Workflows", "my-wf", "run-a3f8")).toBe(
 			"Workflows/my-wf/instances/run-a3f8"
@@ -28,5 +34,11 @@ describe("workflow instance paths", () => {
 		expect(
 			getInstanceTaskPath("Workflows", "my-wf", "run-a3f8", "task-a")
 		).toBe("Workflows/my-wf/instances/run-a3f8/task-a.md");
+	});
+
+	it("passes through raw path segments without validation", () => {
+		expect(
+			getInstanceTaskPath("Workflows", "alpha", "../escape", "nested/task")
+		).toBe("Workflows/alpha/instances/../escape/nested/task.md");
 	});
 });
