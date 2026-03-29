@@ -96,6 +96,8 @@ Update existing modules so that definition-level operations correctly exclude in
 
 ## Phase 3: Instance Creation
 
+Status: Complete (2026-03-29)
+
 ### Phase Goal
 
 Implement the `InstanceManager` class with the `createInstance()` method as the core entrypoint for creating active workflow instances. This is the primary deliverable of the feature.
