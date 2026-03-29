@@ -2,6 +2,7 @@ import { Notice, Plugin, type CachedMetadata, type TFile } from "obsidian";
 import { getAPI, type LocalRestApiPublicApi } from "obsidian-local-rest-api";
 
 import { CanvasWriter } from "./core/CanvasWriter";
+import { InstanceManager } from "./core/InstanceManager";
 import { TaskManager } from "./core/TaskManager";
 import { TemplateRegistry } from "./core/TemplateRegistry";
 import { isRecord } from "./core/vaultUtils";
@@ -32,6 +33,7 @@ export default class IronflowPlugin extends Plugin {
 	canvasWriter: CanvasWriter | null = null;
 	taskManager: TaskManager | null = null;
 	workflowManager: WorkflowManager | null = null;
+	instanceManager: InstanceManager | null = null;
 
 	/**
 	 * Load plugin resources and register integrations.
@@ -54,6 +56,12 @@ export default class IronflowPlugin extends Plugin {
 			this.app,
 			this.taskManager,
 			this.canvasWriter,
+			this.settings
+		);
+		this.instanceManager = new InstanceManager(
+			this.app,
+			this.workflowManager,
+			this.templateRegistry,
 			this.settings
 		);
 		this.registerView(TaskPropertyPanel.VIEW_TYPE, (leaf) => {
@@ -80,6 +88,7 @@ export default class IronflowPlugin extends Plugin {
 	 * Tear down plugin-managed resources.
 	 */
 	onunload(): void {
+		this.instanceManager = null;
 		this.workflowManager = null;
 		this.taskManager = null;
 		this.canvasWriter = null;

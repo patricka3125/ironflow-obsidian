@@ -163,6 +163,8 @@ Error-path tests:
 
 ## Phase 4: Plugin Integration
 
+Status: Complete (2026-03-29)
+
 Note: Before Phase 4 is considered complete, update task-path recognition so instance task files under `instances/<instanceId>/` are treated as workflow task files where appropriate. Today `getWorkflowNameFromTaskPath()` only matches definition task paths with a single segment after the workflow name, which is insufficient for instance file paths.
 
 ### Phase Goal

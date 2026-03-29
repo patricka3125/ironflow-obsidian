@@ -114,9 +114,20 @@ export function getWorkflowNameFromTaskPath(
 
 	const relativePath = path.slice(prefix.length);
 	const [workflowName, ...remainingSegments] = relativePath.split("/");
-	if (!workflowName || remainingSegments.length !== 1) {
+	if (!workflowName) {
 		return null;
 	}
 
-	return workflowName;
+	if (remainingSegments.length === 1) {
+		return workflowName;
+	}
+
+	if (
+		remainingSegments.length === 3 &&
+		remainingSegments[0] === INSTANCES_FOLDER_NAME
+	) {
+		return workflowName;
+	}
+
+	return null;
 }

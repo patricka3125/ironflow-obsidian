@@ -411,6 +411,7 @@ describe("Workflow UI", () => {
 			name: "Ironflow",
 		} as never);
 		await plugin.onload();
+		expect(plugin.instanceManager).not.toBeNull();
 
 		expect((plugin as never as { commands: Array<{ id: string }> }).commands.map((command) => command.id)).toEqual([
 			"create-workflow",
@@ -429,6 +430,27 @@ describe("Workflow UI", () => {
 		await plugin.handleWorkflowTaskFileOpen(taskFile as never);
 		const panel = panelLeaf?.view as TaskPropertyPanel;
 		expect(panel.getCurrentTask()?.filePath).toBe(taskFile.path);
+
+		const instanceTaskFile = app.vault.writeFile(
+			"Workflows/alpha/instances/run-a3f8/task-b.md",
+			updateFrontmatter("Instance body", {
+				"ironflow-template": "Review",
+				"ironflow-workflow": "alpha",
+				"ironflow-agent-profile": "",
+				"ironflow-depends-on": [],
+				"ironflow-next-tasks": [],
+				"ironflow-instance-id": "run-a3f8",
+				"ironflow-status": "open",
+				provider: "claude_code",
+			})
+		);
+		await plugin.handleWorkflowTaskFileOpen(instanceTaskFile as never);
+		expect(
+			app.workspace
+				.getLeavesOfType(TaskPropertyPanel.VIEW_TYPE)
+				.map((leaf: { view: TaskPropertyPanel }) => leaf.view.getCurrentTask()?.filePath)
+		).toContain(instanceTaskFile.path);
+		await plugin.handleWorkflowTaskFileOpen(taskFile as never);
 
 		const outsideFile = app.vault.writeFile("Notes.md", "# outside");
 		app.workspace.trigger("file-open", outsideFile);
@@ -451,9 +473,16 @@ describe("Workflow UI", () => {
 				provider: "claude_code",
 			},
 		} as never);
-		expect(panel.getCurrentTask()?.frontmatter["ironflow-agent-profile"]).toBe(
-			"reviewer"
-		);
+		expect(
+			app.workspace
+				.getLeavesOfType(TaskPropertyPanel.VIEW_TYPE)
+				.some(
+					(leaf: { view: TaskPropertyPanel }) =>
+						leaf.view.getCurrentTask()?.filePath === taskFile.path &&
+						leaf.view.getCurrentTask()?.frontmatter["ironflow-agent-profile"] ===
+							"reviewer"
+				)
+		).toBe(true);
 	});
 
 	it("parses workflow names from canvas and task paths", () => {
@@ -468,6 +497,12 @@ describe("Workflow UI", () => {
 		expect(getWorkflowNameFromTaskPath("Workflows", "Workflows/alpha/task-a.md")).toBe(
 			"alpha"
 		);
+		expect(
+			getWorkflowNameFromTaskPath(
+				"Workflows",
+				"Workflows/alpha/instances/run-a3f8/task-a.md"
+			)
+		).toBe("alpha");
 		expect(
 			getWorkflowNameFromTaskPath(
 				"Workflows",
