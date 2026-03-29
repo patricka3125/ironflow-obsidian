@@ -120,6 +120,63 @@ describe("Instance management", () => {
 		expect(stripFrontmatter(reviewContent)).toBe(reviewTemplateBody);
 	});
 
+	it("filters managed ironflow fields from user overrides and preserves extra fields", async () => {
+		const app = createFakeApp();
+		const settings = createSettings();
+		seedWorkflowDefinition(app.vault, "alpha");
+		seedTemplates(app.vault);
+		const instanceManager = createInstanceManager(
+			app,
+			settings,
+			createTemplateRegistryStub([
+				{
+					name: "Development Execution",
+					filePath: "Templates/Development Execution.md",
+					fields: [],
+				},
+				{
+					name: "Review Execution",
+					filePath: "Templates/Review Execution.md",
+					fields: [],
+				},
+			])
+		);
+
+		await instanceManager.createInstance(
+			"alpha",
+			{
+				"Develop Phase 1": {
+					"plan-path": "Projects/alpha/plan.md",
+					references: "src/main.ts",
+					"ironflow-status": "done",
+					notes: "extra context",
+				},
+				"Review Phase 1": {
+					references: "src/main.ts",
+					"ironflow-instance-id": "override-me",
+				},
+			},
+			"sprint-1"
+		);
+
+		const developFrontmatter = parseFrontmatter(
+			await readFileContent(
+				app.vault,
+				"Workflows/alpha/instances/sprint-1/Develop Phase 1.md"
+			)
+		);
+		const reviewFrontmatter = parseFrontmatter(
+			await readFileContent(
+				app.vault,
+				"Workflows/alpha/instances/sprint-1/Review Phase 1.md"
+			)
+		);
+
+		expect(developFrontmatter["ironflow-status"]).toBe("open");
+		expect(developFrontmatter.notes).toBe("extra context");
+		expect(reviewFrontmatter["ironflow-instance-id"]).toBe("sprint-1");
+	});
+
 	it("generates a run-style instance id when no instance name is provided", async () => {
 		const app = createFakeApp();
 		const settings = createSettings();
@@ -164,6 +221,55 @@ describe("Instance management", () => {
 		} finally {
 			randomSpy.mockRestore();
 		}
+	});
+
+	it("creates multiple instances for the same workflow when ids differ", async () => {
+		const app = createFakeApp();
+		const settings = createSettings();
+		seedWorkflowDefinition(app.vault, "alpha");
+		seedTemplates(app.vault);
+		const instanceManager = createInstanceManager(
+			app,
+			settings,
+			createTemplateRegistryStub([
+				{
+					name: "Development Execution",
+					filePath: "Templates/Development Execution.md",
+					fields: [],
+				},
+				{
+					name: "Review Execution",
+					filePath: "Templates/Review Execution.md",
+					fields: [],
+				},
+			])
+		);
+
+		await instanceManager.createInstance("alpha", {
+			"Develop Phase 1": {
+				"plan-path": "Projects/alpha/plan.md",
+				references: "src/main.ts",
+			},
+			"Review Phase 1": {
+				references: "src/main.ts",
+			},
+		}, "sprint-1");
+		await instanceManager.createInstance("alpha", {
+			"Develop Phase 1": {
+				"plan-path": "Projects/alpha/plan-2.md",
+				references: "docs/architecture.md",
+			},
+			"Review Phase 1": {
+				references: "docs/architecture.md",
+			},
+		}, "sprint-2");
+
+		expect(
+			app.vault.getFolderByPath("Workflows/alpha/instances/sprint-1")
+		).not.toBeNull();
+		expect(
+			app.vault.getFolderByPath("Workflows/alpha/instances/sprint-2")
+		).not.toBeNull();
 	});
 
 	it("throws when the workflow does not exist", async () => {
@@ -302,6 +408,40 @@ describe("Instance management", () => {
 				},
 			})
 		).rejects.toThrow(/Review Execution.*Review Phase 1.*not found/);
+	});
+
+	it("throws when a template is registered but its file is missing from the vault", async () => {
+		const app = createFakeApp();
+		const settings = createSettings();
+		seedWorkflowDefinition(app.vault, "alpha");
+		const instanceManager = createInstanceManager(
+			app,
+			settings,
+			createTemplateRegistryStub([
+				{
+					name: "Development Execution",
+					filePath: "Templates/Development Execution.md",
+					fields: [],
+				},
+				{
+					name: "Review Execution",
+					filePath: "Templates/Review Execution.md",
+					fields: [],
+				},
+			])
+		);
+
+		await expect(
+			instanceManager.createInstance("alpha", {
+				"Develop Phase 1": {
+					"plan-path": "Projects/alpha/plan.md",
+					references: "src/main.ts",
+				},
+				"Review Phase 1": {
+					references: "src/main.ts",
+				},
+			})
+		).rejects.toThrow(/Template file "Templates\/Development Execution\.md" was not found/);
 	});
 });
 

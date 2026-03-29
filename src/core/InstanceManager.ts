@@ -59,6 +59,8 @@ export class InstanceManager {
 		await this.ensureInstancesFolderExists(workflowName);
 		await this.app.vault.createFolder(instancePath);
 
+		// Instance creation is not atomic. If a later task fails, any files already
+		// created in the instance directory are left in place for explicit cleanup.
 		const tasks: IronflowTask[] = [];
 		for (const task of workflow.tasks) {
 			const taskFieldValues = fieldValues[task.name] ?? {};
