@@ -15,6 +15,8 @@ export interface IronflowTaskFrontmatter {
 	"ironflow-agent-profile": string;
 	"ironflow-depends-on": string[];
 	"ironflow-next-tasks": string[];
+	"ironflow-instance-id"?: string;
+	"ironflow-status"?: WorkflowInstanceTaskStatus;
 	[key: string]: unknown;
 }
 
@@ -35,6 +37,25 @@ export interface IronflowWorkflow {
 	name: string;
 	canvasPath: string;
 	taskFolderPath: string;
+	tasks: IronflowTask[];
+}
+
+/**
+ * Status of a task within a workflow instance.
+ */
+export type WorkflowInstanceTaskStatus =
+	| "open"
+	| "pending"
+	| "in-progress"
+	| "done";
+
+/**
+ * An active workflow instance created from a workflow definition.
+ */
+export interface WorkflowInstance {
+	instanceId: string;
+	workflowName: string;
+	instancePath: string;
 	tasks: IronflowTask[];
 }
 

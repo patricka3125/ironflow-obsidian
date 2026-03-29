@@ -6,6 +6,8 @@ design-path: docs/active-workflow-instances-design.md
 
 ## Phase 1: Foundation — Types and Utilities
 
+Status: Complete (2026-03-29)
+
 ### Phase Goal
 
 Establish the new type definitions and pure utility functions that all subsequent phases depend on. No existing behavior is modified.
