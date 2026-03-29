@@ -11,6 +11,7 @@ export interface FakeFile {
 
 export interface FakeFolder {
 	path: string;
+	name: string;
 	children: FakeAbstractFile[];
 }
 
@@ -24,7 +25,7 @@ export class FakeVault extends Events {
 
 	constructor() {
 		super();
-		this.folders.set("", { path: "", children: [] });
+		this.folders.set("", { path: "", name: "", children: [] });
 	}
 
 	getAbstractFileByPath(path: string): FakeAbstractFile | null {
@@ -219,6 +220,7 @@ export function createFakeFile(path: string): FakeFile {
 export function createFakeFolder(path: string): FakeFolder {
 	return {
 		path,
+		name: path.split("/").at(-1) ?? path,
 		children: [],
 	};
 }

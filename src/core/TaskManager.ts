@@ -7,6 +7,7 @@ import {
 } from "./taskUtils";
 import { isFolder, isMarkdownFile, listMarkdownFiles } from "./vaultUtils";
 import {
+	INSTANCES_FOLDER_NAME,
 	getWorkflowTaskFolderPath,
 	getWorkflowTaskPath,
 } from "./workflowPaths";
@@ -15,6 +16,8 @@ import type {
 	IronflowTask,
 	IronflowTaskFrontmatter,
 } from "../types";
+
+const EXCLUDED_WORKFLOW_FOLDER_NAMES = new Set([INSTANCES_FOLDER_NAME]);
 
 /**
  * CRUD operations for workflow task template markdown files.
@@ -139,9 +142,10 @@ export class TaskManager {
 			return [];
 		}
 
-		const taskFiles = listMarkdownFiles(workflowFolder).sort((left, right) =>
-			left.path.localeCompare(right.path)
-		);
+		const taskFiles = listMarkdownFiles(
+			workflowFolder,
+			EXCLUDED_WORKFLOW_FOLDER_NAMES
+		).sort((left, right) => left.path.localeCompare(right.path));
 		const tasks = await Promise.all(
 			taskFiles.map(async (file) => {
 				const content = await this.app.vault.read(file);

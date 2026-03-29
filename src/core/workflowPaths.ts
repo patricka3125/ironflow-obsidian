@@ -1,3 +1,6 @@
+/** Fixed subdirectory name for workflow instances. */
+export const INSTANCES_FOLDER_NAME = "instances";
+
 /**
  * Build the vault path for a workflow root folder.
  */
@@ -34,6 +37,39 @@ export function getWorkflowTaskPath(
 	taskName: string
 ): string {
 	return `${getWorkflowTaskFolderPath(workflowFolder, workflowName)}/${taskName}.md`;
+}
+
+/**
+ * Build the vault path for a workflow's instances directory.
+ */
+export function getInstancesFolderPath(
+	workflowFolder: string,
+	workflowName: string
+): string {
+	return `${getWorkflowTaskFolderPath(workflowFolder, workflowName)}/${INSTANCES_FOLDER_NAME}`;
+}
+
+/**
+ * Build the vault path for a specific workflow instance directory.
+ */
+export function getInstancePath(
+	workflowFolder: string,
+	workflowName: string,
+	instanceId: string
+): string {
+	return `${getInstancesFolderPath(workflowFolder, workflowName)}/${instanceId}`;
+}
+
+/**
+ * Build the vault path for one task markdown file within an instance.
+ */
+export function getInstanceTaskPath(
+	workflowFolder: string,
+	workflowName: string,
+	instanceId: string,
+	taskName: string
+): string {
+	return `${getInstancePath(workflowFolder, workflowName, instanceId)}/${taskName}.md`;
 }
 
 /**
@@ -78,9 +114,20 @@ export function getWorkflowNameFromTaskPath(
 
 	const relativePath = path.slice(prefix.length);
 	const [workflowName, ...remainingSegments] = relativePath.split("/");
-	if (!workflowName || remainingSegments.length !== 1) {
+	if (!workflowName) {
 		return null;
 	}
 
-	return workflowName;
+	if (remainingSegments.length === 1) {
+		return workflowName;
+	}
+
+	if (
+		remainingSegments.length === 3 &&
+		remainingSegments[0] === INSTANCES_FOLDER_NAME
+	) {
+		return workflowName;
+	}
+
+	return null;
 }
