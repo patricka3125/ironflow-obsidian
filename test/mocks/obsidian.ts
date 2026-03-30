@@ -462,13 +462,15 @@ class BaseValueComponent<TValue> {
 }
 
 export class TextComponent extends BaseValueComponent<string> {
-	setPlaceholder(_placeholder: string): this {
+	setPlaceholder(placeholder: string): this {
+		this.inputEl.attributes.placeholder = placeholder;
 		return this;
 	}
 }
 
 export class TextAreaComponent extends BaseValueComponent<string> {
-	setPlaceholder(_placeholder: string): this {
+	setPlaceholder(placeholder: string): this {
+		this.inputEl.attributes.placeholder = placeholder;
 		return this;
 	}
 }
@@ -490,9 +492,16 @@ export class DropdownComponent extends BaseValueComponent<string> {
 export class ButtonComponent {
 	buttonEl = new MockElement("button");
 	private clickHandler: (() => unknown) | null = null;
+	disabled = false;
 
 	setButtonText(text: string): this {
 		this.buttonEl.text = text;
+		return this;
+	}
+
+	setDisabled(disabled: boolean): this {
+		this.disabled = disabled;
+		this.buttonEl.attributes.disabled = disabled ? "true" : "false";
 		return this;
 	}
 
