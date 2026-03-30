@@ -13,6 +13,7 @@ import { isRecord } from "./core/vaultUtils";
 import {
 	getWorkflowNameFromCanvasPath,
 	getWorkflowNameFromTaskPath,
+	isInstancePath,
 } from "./core/workflowPaths";
 import { WorkflowManager } from "./core/WorkflowManager";
 import { IronflowSettingsTab } from "./settings/SettingsTab";
@@ -323,7 +324,10 @@ export default class IronflowPlugin extends Plugin {
 	}
 
 	private isWorkflowTaskFile(path: string): boolean {
-		return getWorkflowNameFromTaskPath(this.settings.workflowFolder, path) !== null;
+		return (
+			getWorkflowNameFromTaskPath(this.settings.workflowFolder, path) !== null &&
+			!isInstancePath(this.settings.workflowFolder, path)
+		);
 	}
 
 	/**

@@ -112,7 +112,10 @@ export class InstanceManager {
 			);
 		}
 
-		const folderNotePath = `${instance.instancePath}/${instance.instanceId}.md`;
+		const folderNotePath = `${getInstancesFolderPath(
+			this.settings.workflowFolder,
+			instance.workflowName
+		)}/${instance.instanceId}.md`;
 		const folderNoteContent = this.buildInstanceFolderNoteContent(instance);
 
 		return (await this.app.vault.create(folderNotePath, folderNoteContent)) as TFile;
@@ -179,7 +182,6 @@ export class InstanceManager {
 			"```dataview",
 			'TABLE ironflow-status AS "Status", ironflow-template AS "Template", ironflow-agent-profile AS "Agent", ironflow-depends-on AS "Depends On", ironflow-next-tasks AS "Next Tasks"',
 			`FROM "${instance.instancePath}"`,
-			`WHERE ironflow-instance-id AND file.name != "${instance.instanceId}"`,
 			"SORT file.name ASC",
 			"```",
 		].join("\n");

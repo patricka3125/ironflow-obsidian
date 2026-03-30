@@ -131,3 +131,18 @@ export function getWorkflowNameFromTaskPath(
 
 	return null;
 }
+
+/**
+ * Return whether a path belongs to a workflow instance under the instances directory.
+ */
+export function isInstancePath(workflowFolder: string, path: string): boolean {
+	const prefix = `${workflowFolder}/`;
+	if (!path.startsWith(prefix)) {
+		return false;
+	}
+
+	const relativePath = path.slice(prefix.length);
+	const segments = relativePath.split("/");
+
+	return segments.length >= 2 && segments[1] === INSTANCES_FOLDER_NAME;
+}

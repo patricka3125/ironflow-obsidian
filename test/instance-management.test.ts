@@ -314,10 +314,10 @@ describe("Instance management", () => {
 			const folderNote = await instanceManager.createInstanceFolderNote(instance);
 			const folderNoteContent = await readFileContent(
 				app.vault,
-				"Workflows/alpha/instances/sprint-1/sprint-1.md"
+				"Workflows/alpha/instances/sprint-1.md"
 			);
 
-			expect(folderNote.path).toBe("Workflows/alpha/instances/sprint-1/sprint-1.md");
+			expect(folderNote.path).toBe("Workflows/alpha/instances/sprint-1.md");
 			expect(parseFrontmatter(folderNoteContent)).toEqual({
 				"ironflow-type": "instance-base",
 				"ironflow-workflow": "alpha",
@@ -332,9 +332,7 @@ describe("Instance management", () => {
 			expect(folderNoteContent).toContain(
 				'FROM "Workflows/alpha/instances/sprint-1"'
 			);
-			expect(folderNoteContent).toContain(
-				'WHERE ironflow-instance-id AND file.name != "sprint-1"'
-			);
+			expect(folderNoteContent).not.toContain('file.name != "sprint-1"');
 		} finally {
 			vi.useRealTimers();
 		}

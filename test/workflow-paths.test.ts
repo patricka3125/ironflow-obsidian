@@ -5,6 +5,7 @@ import {
 	getInstancePath,
 	getInstanceTaskPath,
 	getInstancesFolderPath,
+	isInstancePath,
 } from "../src/core/workflowPaths";
 
 describe("workflow instance paths", () => {
@@ -40,5 +41,20 @@ describe("workflow instance paths", () => {
 		expect(
 			getInstanceTaskPath("Workflows", "alpha", "../escape", "nested/task")
 		).toBe("Workflows/alpha/instances/../escape/nested/task.md");
+	});
+
+	it("detects paths under a workflow instances directory", () => {
+		expect(isInstancePath("Workflows", "Workflows/alpha/task-a.md")).toBe(false);
+		expect(
+			isInstancePath(
+				"Workflows",
+				"Workflows/alpha/instances/run-a3f8/task-a.md"
+			)
+		).toBe(true);
+		expect(
+			isInstancePath("Workflows", "Workflows/alpha/instances/run-a3f8.md")
+		).toBe(true);
+		expect(isInstancePath("Workflows", "Notes/run-a3f8.md")).toBe(false);
+		expect(isInstancePath("Workflows", "Workflows/alpha/instances")).toBe(true);
 	});
 });

@@ -93,7 +93,7 @@ describe("CreateInstancePanel", () => {
 		const workflow = createWorkflow();
 		const createInstanceCalls: unknown[][] = [];
 		const folderNote = createFakeFile(
-			"Workflows/alpha/instances/sprint-1/sprint-1.md"
+			"Workflows/alpha/instances/sprint-1.md"
 		);
 		const createInstanceDeferred = createDeferred<WorkflowInstance>();
 		const panel = createPanel(
@@ -183,7 +183,7 @@ describe("CreateInstancePanel", () => {
 					},
 					async createInstanceFolderNote(): Promise<FakeFile> {
 						return createFakeFile(
-							"Workflows/alpha/instances/run-a3f8/run-a3f8.md"
+							"Workflows/alpha/instances/run-a3f8.md"
 						);
 					},
 				},

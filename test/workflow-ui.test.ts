@@ -465,8 +465,22 @@ describe("Workflow UI", () => {
 			app.workspace
 				.getLeavesOfType(TaskPropertyPanel.VIEW_TYPE)
 				.map((leaf: { view: TaskPropertyPanel }) => leaf.view.getCurrentTask()?.filePath)
-		).toContain(instanceTaskFile.path);
-		await plugin.handleWorkflowTaskFileOpen(taskFile as never);
+		).not.toContain(instanceTaskFile.path);
+
+		const instanceFolderNote = app.vault.writeFile(
+			"Workflows/alpha/instances/run-a3f8.md",
+			updateFrontmatter("Instance note", {
+				"ironflow-type": "instance-base",
+				"ironflow-workflow": "alpha",
+				"ironflow-instance-id": "run-a3f8",
+			})
+		);
+		await plugin.handleWorkflowTaskFileOpen(instanceFolderNote as never);
+		expect(
+			app.workspace
+				.getLeavesOfType(TaskPropertyPanel.VIEW_TYPE)
+				.map((leaf: { view: TaskPropertyPanel }) => leaf.view.getCurrentTask()?.filePath)
+		).not.toContain(instanceFolderNote.path);
 
 		const outsideFile = app.vault.writeFile("Notes.md", "# outside");
 		app.workspace.trigger("file-open", outsideFile);
