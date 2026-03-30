@@ -169,15 +169,20 @@ export class MockElement {
 
 export class Notice {
 	static notices: string[] = [];
+	static events: Array<{ message: string; timeout?: number }> = [];
 	message: string;
+	timeout?: number;
 
-	constructor(message: string, _timeout?: number) {
+	constructor(message: string, timeout?: number) {
 		this.message = message;
+		this.timeout = timeout;
 		Notice.notices.push(message);
+		Notice.events.push({ message, timeout });
 	}
 
 	static reset(): void {
 		Notice.notices = [];
+		Notice.events = [];
 	}
 }
 

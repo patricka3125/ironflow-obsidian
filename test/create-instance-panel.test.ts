@@ -286,6 +286,9 @@ function createPanel(overrides: Partial<Record<string, unknown>> = {}): CreateIn
 		app,
 		workflowManager: overrides.workflowManager ?? null,
 		instanceManager: overrides.instanceManager ?? null,
+		isDataviewEnabled:
+			overrides.isDataviewEnabled ??
+			(() => app.plugins.enabledPlugins.has("dataview")),
 		...overrides,
 	};
 

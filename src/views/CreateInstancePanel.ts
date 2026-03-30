@@ -164,7 +164,7 @@ export class CreateInstancePanel extends ItemView {
 				await this.plugin.instanceManager.createInstanceFolderNote(instance);
 
 			new Notice(`Instance '${instance.instanceId}' created for ${this.workflow.name}`);
-			if (!this.app.plugins.enabledPlugins.has("dataview")) {
+			if (!this.plugin.isDataviewEnabled()) {
 				new Notice(DATAVIEW_NOTICE);
 			}
 

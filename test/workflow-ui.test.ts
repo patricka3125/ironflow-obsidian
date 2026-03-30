@@ -18,6 +18,7 @@ import {
 	FakeVault,
 	type FakeFile,
 } from "./mocks/fakeVault";
+import { CreateInstancePanel } from "../src/views/CreateInstancePanel";
 
 describe("Workflow UI", () => {
 	beforeEach(() => {
@@ -388,6 +389,10 @@ describe("Workflow UI", () => {
 		app.vault.ensureFolder("Templates");
 		app.vault.ensureFolder("Workflows");
 		app.vault.ensureFolder("Workflows/alpha");
+		app.vault.writeFile(
+			"Workflows/alpha.canvas",
+			`${JSON.stringify({ nodes: [], edges: [] }, null, 2)}\n`
+		);
 		const templateFile = app.vault.writeFile(
 			"Templates/Review.md",
 			updateFrontmatter("Review body", { provider: "claude_code" })
@@ -412,12 +417,14 @@ describe("Workflow UI", () => {
 		} as never);
 		await plugin.onload();
 		expect(plugin.instanceManager).not.toBeNull();
+		expect(plugin.canvasToolbarManager).not.toBeNull();
 
 		expect((plugin as never as { commands: Array<{ id: string }> }).commands.map((command) => command.id)).toEqual([
 			"create-workflow",
 			"add-task",
 			"remove-task",
 			"open-task-panel",
+			"create-instance",
 		]);
 		expect((plugin as never as { ribbonIcons: unknown[] }).ribbonIcons).toHaveLength(1);
 
@@ -426,6 +433,15 @@ describe("Workflow UI", () => {
 		}).commands[3]?.callback?.();
 		const panelLeaf = app.workspace.getLeavesOfType(TaskPropertyPanel.VIEW_TYPE)[0];
 		expect(panelLeaf?.view).toBeInstanceOf(TaskPropertyPanel);
+
+		app.workspace.activeFile = createFakeFile("Workflows/alpha.canvas") as never;
+		await plugin.handleCreateInstanceClick("alpha");
+		const createInstanceLeaf =
+			app.workspace.getLeavesOfType(CreateInstancePanel.VIEW_TYPE)[0];
+		expect(createInstanceLeaf?.view).toBeInstanceOf(CreateInstancePanel);
+		expect(
+			(createInstanceLeaf?.view as CreateInstancePanel).containerEl.textContent
+		).toContain("alpha");
 
 		await plugin.handleWorkflowTaskFileOpen(taskFile as never);
 		const panel = panelLeaf?.view as TaskPropertyPanel;
@@ -483,6 +499,82 @@ describe("Workflow UI", () => {
 							"reviewer"
 				)
 		).toBe(true);
+
+		plugin.onunload();
+		expect(plugin.canvasToolbarManager).toBeNull();
+	});
+
+	it("shows a notice when the create-instance command runs without an active workflow canvas", async () => {
+		const app = createFakeApp();
+		app.plugins.enabledPlugins.add("templater-obsidian");
+		const plugin = new IronflowPlugin(app as never, {
+			id: "ironflow-obsidian",
+			version: "1.0.0",
+			name: "Ironflow",
+		} as never);
+
+		await plugin.onload();
+		await (plugin as never as {
+			commands: Array<{ callback?: () => Promise<unknown> | unknown }>;
+		}).commands[4]?.callback?.();
+
+		expect((Notice as unknown as { notices: string[] }).notices).toContain(
+			"Open a workflow canvas before creating an instance."
+		);
+	});
+
+	it("shows a persistent validation notice when a workflow has empty required fields", async () => {
+		const app = createFakeApp();
+		app.plugins.enabledPlugins.add("templater-obsidian");
+		app.vault.ensureFolder("Templates");
+		app.vault.ensureFolder("Workflows");
+		app.vault.ensureFolder("Workflows/alpha");
+		const templateFile = app.vault.writeFile(
+			"Templates/Review.md",
+			updateFrontmatter("Review body", { references: "" })
+		);
+		app.vault.writeFile(
+			"Workflows/alpha.canvas",
+			`${JSON.stringify({ nodes: [], edges: [] }, null, 2)}\n`
+		);
+		app.vault.writeFile(
+			"Workflows/alpha/task-a.md",
+			updateFrontmatter("Task body", {
+				"ironflow-template": "Review",
+				"ironflow-workflow": "alpha",
+				"ironflow-agent-profile": "",
+				"ironflow-depends-on": [],
+				"ironflow-next-tasks": [],
+				references: "",
+			})
+		);
+		app.metadataCache.setFrontmatter(templateFile.path, { references: "" });
+
+		const plugin = new IronflowPlugin(app as never, {
+			id: "ironflow-obsidian",
+			version: "1.0.0",
+			name: "Ironflow",
+		} as never);
+
+		await plugin.onload();
+		await plugin.handleCreateInstanceClick("alpha");
+
+		expect((Notice as unknown as { notices: string[] }).notices).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining('Cannot create instance for "alpha".'),
+			])
+		);
+		expect(
+			(Notice as unknown as {
+				events: Array<{ message: string; timeout?: number }>;
+			}).events
+		).toContainEqual(
+			expect.objectContaining({
+				message: expect.stringContaining("task-a: references"),
+				timeout: 0,
+			})
+		);
+		expect(app.workspace.getLeavesOfType(CreateInstancePanel.VIEW_TYPE)).toHaveLength(0);
 	});
 
 	it("parses workflow names from canvas and task paths", () => {
