@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeIronflowTaskFrontmatter } from "../src/core/taskUtils";
+import {
+	getUserFieldValues,
+	isManagedIronflowField,
+	normalizeIronflowTaskFrontmatter,
+} from "../src/core/taskUtils";
 import { listMarkdownFiles } from "../src/core/vaultUtils";
 import { FakeVault } from "./mocks/fakeVault";
 
@@ -102,6 +106,54 @@ describe("normalizeIronflowTaskFrontmatter", () => {
 
 		expect(normalizedFrontmatter).not.toHaveProperty("ironflow-instance-id");
 		expect(normalizedFrontmatter).not.toHaveProperty("ironflow-status");
+	});
+});
+
+describe("isManagedIronflowField", () => {
+	it("returns true only for ironflow-prefixed keys", () => {
+		expect(isManagedIronflowField("ironflow-template")).toBe(true);
+		expect(isManagedIronflowField("ironflow-status")).toBe(true);
+		expect(isManagedIronflowField("ironflow-")).toBe(true);
+		expect(isManagedIronflowField("references")).toBe(false);
+		expect(isManagedIronflowField("IRONFLOW-template")).toBe(false);
+		expect(isManagedIronflowField("")).toBe(false);
+		expect(isManagedIronflowField("ironflow")).toBe(false);
+	});
+});
+
+describe("getUserFieldValues", () => {
+	it("filters out ironflow-managed keys and preserves user-defined values", () => {
+		expect(
+			getUserFieldValues({
+				"ironflow-template": "Execution",
+				"ironflow-status": "open",
+				references: "src/main.ts",
+				notes: "extra context",
+			})
+		).toEqual({
+			references: "src/main.ts",
+			notes: "extra context",
+		});
+	});
+
+	it("returns an empty object for empty input and all-managed keys", () => {
+		expect(getUserFieldValues({})).toEqual({});
+		expect(
+			getUserFieldValues({
+				"ironflow-template": "Execution",
+				"ironflow-status": "open",
+			})
+		).toEqual({});
+	});
+
+	it("preserves non-ironflow keys even when their values are empty", () => {
+		expect(
+			getUserFieldValues({
+				references: "",
+			})
+		).toEqual({
+			references: "",
+		});
 	});
 });
 

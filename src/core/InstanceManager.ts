@@ -3,7 +3,11 @@ import type { App, TFile } from "obsidian";
 import { stripFrontmatter, updateFrontmatter } from "./frontmatter";
 import { generateInstanceId } from "./instanceUtils";
 import type { TemplateRegistry } from "./TemplateRegistry";
-import { buildIronflowTask } from "./taskUtils";
+import {
+	buildIronflowTask,
+	getUserFieldValues,
+	isManagedIronflowField,
+} from "./taskUtils";
 import type { WorkflowManager } from "./WorkflowManager";
 import {
 	getInstancePath,
@@ -97,6 +101,26 @@ export class InstanceManager {
 		};
 	}
 
+	/**
+	 * Create a folder note for an instance with an embedded Dataview task table.
+	 */
+	async createInstanceFolderNote(instance: WorkflowInstance): Promise<TFile> {
+		// Folder notes are only valid for instances that already have a backing folder.
+		if (!this.app.vault.getFolderByPath(instance.instancePath)) {
+			throw new Error(
+				`Instance folder "${instance.instancePath}" does not exist. Create the instance before creating its folder note.`
+			);
+		}
+
+		const folderNotePath = `${getInstancesFolderPath(
+			this.settings.workflowFolder,
+			instance.workflowName
+		)}/${instance.instanceId}.md`;
+		const folderNoteContent = this.buildInstanceFolderNoteContent(instance);
+
+		return (await this.app.vault.create(folderNotePath, folderNoteContent)) as TFile;
+	}
+
 	private async ensureInstancesFolderExists(workflowName: string): Promise<void> {
 		const instancesFolderPath = getInstancesFolderPath(
 			this.settings.workflowFolder,
@@ -146,18 +170,35 @@ export class InstanceManager {
 			`Task "${taskName}" is missing required field values: ${missingFields.join(", ")}.`
 		);
 	}
-}
 
-function isManagedIronflowField(key: string): boolean {
-	return key.startsWith("ironflow-");
-}
+	private buildInstanceFolderNoteContent(instance: WorkflowInstance): string {
+		const createdDate = new Date().toISOString().slice(0, 10);
+		const noteFrontmatter = {
+			"ironflow-type": "instance-base",
+			"ironflow-workflow": instance.workflowName,
+			"ironflow-instance-id": instance.instanceId,
+		};
+		const dataviewQuery = [
+			"```dataview",
+			'TABLE ironflow-status AS "Status", ironflow-template AS "Template", ironflow-agent-profile AS "Agent", ironflow-depends-on AS "Depends On", ironflow-next-tasks AS "Next Tasks"',
+			`FROM "${instance.instancePath}"`,
+			"SORT file.name ASC",
+			"```",
+		].join("\n");
+		const noteBody = [
+			`# ${instance.instanceId}`,
+			"",
+			`**Workflow:** [[${instance.workflowName}]]`,
+			`**Created:** ${createdDate}`,
+			"",
+			"## Tasks",
+			"",
+			dataviewQuery,
+			"",
+		].join("\n");
 
-function getUserFieldValues(
-	fieldValues: Record<string, unknown>
-): Record<string, unknown> {
-	return Object.fromEntries(
-		Object.entries(fieldValues).filter(([key]) => !isManagedIronflowField(key))
-	);
+		return `${updateFrontmatter("", noteFrontmatter)}\n${noteBody}`;
+	}
 }
 
 function getInitialTaskStatus(task: IronflowTask): WorkflowInstanceTaskStatus {

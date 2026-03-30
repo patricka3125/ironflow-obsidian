@@ -70,6 +70,24 @@ export function getTaskNameFromPath(filePath: string): string {
 	return filePath.split("/").at(-1)?.replace(/\.md$/, "") ?? filePath;
 }
 
+/**
+ * Return whether a frontmatter key is managed by Ironflow.
+ */
+export function isManagedIronflowField(key: string): boolean {
+	return key.startsWith("ironflow-");
+}
+
+/**
+ * Return only user-authored frontmatter values from a frontmatter object.
+ */
+export function getUserFieldValues(
+	fieldValues: Record<string, unknown>
+): Record<string, unknown> {
+	return Object.fromEntries(
+		Object.entries(fieldValues).filter(([key]) => !isManagedIronflowField(key))
+	);
+}
+
 function toStringValue(value: unknown): string {
 	return typeof value === "string" ? value : "";
 }

@@ -3,16 +3,23 @@ import { getAPI, type LocalRestApiPublicApi } from "obsidian-local-rest-api";
 
 import { CanvasWriter } from "./core/CanvasWriter";
 import { InstanceManager } from "./core/InstanceManager";
+import {
+	validateWorkflowReadiness,
+	type ValidationError,
+} from "./core/instanceValidation";
 import { TaskManager } from "./core/TaskManager";
 import { TemplateRegistry } from "./core/TemplateRegistry";
 import { isRecord } from "./core/vaultUtils";
 import {
 	getWorkflowNameFromCanvasPath,
 	getWorkflowNameFromTaskPath,
+	isInstancePath,
 } from "./core/workflowPaths";
 import { WorkflowManager } from "./core/WorkflowManager";
 import { IronflowSettingsTab } from "./settings/SettingsTab";
 import { DEFAULT_SETTINGS, type IronflowSettings } from "./types";
+import { CanvasToolbarManager } from "./views/canvasToolbar";
+import { CreateInstancePanel } from "./views/CreateInstancePanel";
 import { RemoveTaskModal } from "./views/RemoveTaskModal";
 import { TaskPropertyPanel } from "./views/TaskPropertyPanel";
 import { WorkflowCommandModal } from "./views/WorkflowCommandModal";
@@ -34,6 +41,7 @@ export default class IronflowPlugin extends Plugin {
 	taskManager: TaskManager | null = null;
 	workflowManager: WorkflowManager | null = null;
 	instanceManager: InstanceManager | null = null;
+	canvasToolbarManager: CanvasToolbarManager | null = null;
 
 	/**
 	 * Load plugin resources and register integrations.
@@ -67,6 +75,17 @@ export default class IronflowPlugin extends Plugin {
 		this.registerView(TaskPropertyPanel.VIEW_TYPE, (leaf) => {
 			return new TaskPropertyPanel(leaf, this);
 		});
+		this.registerView(CreateInstancePanel.VIEW_TYPE, (leaf) => {
+			return new CreateInstancePanel(leaf, this);
+		});
+		this.canvasToolbarManager = new CanvasToolbarManager(
+			this.app,
+			this.settings,
+			(workflowName) => {
+				void this.handleCreateInstanceClick(workflowName);
+			}
+		);
+		this.canvasToolbarManager.register(this);
 		this.registerCommands();
 		this.registerTaskPanelEvents();
 		this.addRibbonIcon("list-checks", "Ironflow: Open Task Properties", () => {
@@ -88,6 +107,7 @@ export default class IronflowPlugin extends Plugin {
 	 * Tear down plugin-managed resources.
 	 */
 	onunload(): void {
+		this.canvasToolbarManager = null;
 		this.instanceManager = null;
 		this.workflowManager = null;
 		this.taskManager = null;
@@ -121,6 +141,21 @@ export default class IronflowPlugin extends Plugin {
 	}
 
 	/**
+	 * Reveal the create-instance panel, creating it when necessary.
+	 */
+	async openCreateInstancePanel(): Promise<CreateInstancePanel> {
+		let leaf =
+			this.app.workspace.getLeavesOfType(CreateInstancePanel.VIEW_TYPE)[0] ??
+			this.app.workspace.getRightLeaf(false);
+		await leaf.setViewState({
+			type: CreateInstancePanel.VIEW_TYPE,
+			active: true,
+		});
+		this.app.workspace.revealLeaf(leaf);
+		return leaf.view as CreateInstancePanel;
+	}
+
+	/**
 	 * Return the current active workflow name when a workflow canvas is focused.
 	 */
 	getActiveWorkflowName(): string | null {
@@ -133,6 +168,33 @@ export default class IronflowPlugin extends Plugin {
 			this.settings.workflowFolder,
 			activeFile.path
 		);
+	}
+
+	/**
+	 * Validate one workflow for instance creation and open the creation panel.
+	 */
+	async handleCreateInstanceClick(workflowName: string): Promise<void> {
+		const workflow = await this.workflowManager?.getWorkflow(workflowName);
+		if (!workflow) {
+			new Notice(`Workflow "${workflowName}" not found.`);
+			return;
+		}
+
+		const validationResult = validateWorkflowReadiness(workflow);
+		if (!validationResult.valid) {
+			this.showValidationErrorNotice(workflowName, validationResult.errors);
+			return;
+		}
+
+		const panel = await this.openCreateInstancePanel();
+		await panel.loadWorkflow(workflowName);
+	}
+
+	/**
+	 * Check whether the Dataview plugin is enabled.
+	 */
+	isDataviewEnabled(): boolean {
+		return this.app.plugins.enabledPlugins.has("dataview");
 	}
 
 	/**
@@ -233,6 +295,19 @@ export default class IronflowPlugin extends Plugin {
 				await this.openTaskPropertyPanel();
 			},
 		});
+		this.addCommand({
+			id: "create-instance",
+			name: "Create Instance",
+			callback: () => {
+				const workflowName = this.getActiveWorkflowName();
+				if (!workflowName) {
+					new Notice("Open a workflow canvas before creating an instance.");
+					return;
+				}
+
+				void this.handleCreateInstanceClick(workflowName);
+			},
+		});
 	}
 
 	private registerTaskPanelEvents(): void {
@@ -249,7 +324,29 @@ export default class IronflowPlugin extends Plugin {
 	}
 
 	private isWorkflowTaskFile(path: string): boolean {
-		return getWorkflowNameFromTaskPath(this.settings.workflowFolder, path) !== null;
+		return (
+			getWorkflowNameFromTaskPath(this.settings.workflowFolder, path) !== null &&
+			!isInstancePath(this.settings.workflowFolder, path)
+		);
+	}
+
+	/**
+	 * Format and display validation errors for blocked instance creation.
+	 */
+	private showValidationErrorNotice(
+		workflowName: string,
+		errors: ValidationError[]
+	): void {
+		const lines = errors.map(
+			(error) => `  ${error.taskName}: ${error.missingFields.join(", ")}`
+		);
+		new Notice(
+			`Cannot create instance for "${workflowName}". ` +
+				"The following tasks have empty required fields:\n\n" +
+				`${lines.join("\n")}\n\n` +
+				"Populate these fields in the Task Property Panel before creating an instance.",
+			0
+		);
 	}
 }
 
