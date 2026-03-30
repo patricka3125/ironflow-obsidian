@@ -195,10 +195,13 @@ src/
 User opens workflow canvas
     │
     ▼
-canvasToolbar.ts: injectCreateInstanceButton()
-  ├─ Listens: workspace "layout-change" and "active-leaf-change"
-  ├─ Checks: active view is canvas AND path matches workflow folder
-  └─ Injects: play icon button into .canvas-controls
+canvasToolbar.ts: CanvasToolbarManager
+  ├─ Listens: workspace "active-leaf-change" and "layout-change"
+  ├─ Early check: is active view type "canvas"?
+  │     ├─ No → removeButton() → done
+  │     └─ Yes → tryInjectButton(canvasView)
+  │           ├─ Checks: file path matches workflow folder
+  │           └─ Injects: play icon button into .canvas-controls
     │
     ▼ (user clicks button)
     │
@@ -253,22 +256,19 @@ export class CanvasToolbarManager {
 
     /**
      * Register workspace event listeners for button injection.
-     * Returns a cleanup function for use in onunload().
      */
     register(plugin: Plugin): void
 
     /**
-     * Check the active view and inject/remove button as appropriate.
+     * Attempt to inject the play button on a canvas view that has
+     * already been confirmed as type "canvas". Checks whether the
+     * canvas is a workflow canvas and whether the controls container
+     * is accessible before injecting.
      */
-    private updateButton(): void
+    private tryInjectButton(canvasView: View): void
 
     /**
-     * Inject the play button into the canvas controls container.
-     */
-    private injectButton(canvas: any, workflowName: string): void
-
-    /**
-     * Remove the button from any canvas controls container.
+     * Remove the button from the DOM if present.
      */
     private removeButton(): void
 }
@@ -276,13 +276,36 @@ export class CanvasToolbarManager {
 
 **Injection logic:**
 
-1. On `layout-change` or `active-leaf-change`, call `updateButton()`.
-2. Get the active view. If it is not type `"canvas"`, call `removeButton()` and return.
-3. Get the canvas file path from `(view as any).file?.path`.
-4. Run through `getWorkflowNameFromCanvasPath()`. If null (not a workflow canvas), call `removeButton()` and return.
-5. Access `(view as any).canvas.quickSettingsButton?.parentElement`.
-6. If the controls container exists and no button with `this.buttonId` is present, create and append the button.
-7. The button's click handler calls `this.onCreateInstanceClick(workflowName)`.
+Event handlers perform an early view-type check before calling into injection logic:
+
+```typescript
+// active-leaf-change provides the leaf directly
+workspace.on("active-leaf-change", (leaf) => {
+    if (leaf?.view?.getViewType() !== "canvas") {
+        this.removeButton();
+        return;
+    }
+    this.tryInjectButton(leaf.view);
+});
+
+// layout-change does not provide a leaf — fetch the active view
+workspace.on("layout-change", () => {
+    const view = this.app.workspace.getActiveViewOfType(ItemView);
+    if (view?.getViewType() !== "canvas") {
+        this.removeButton();
+        return;
+    }
+    this.tryInjectButton(view);
+});
+```
+
+Inside `tryInjectButton(canvasView)`:
+
+1. Get the canvas file path from `(canvasView as any).file?.path`.
+2. Run through `getWorkflowNameFromCanvasPath()`. If null (not a workflow canvas), call `removeButton()` and return.
+3. Access `(canvasView as any).canvas.quickSettingsButton?.parentElement`.
+4. If the controls container exists and no button with `this.buttonId` is present, create and append the button.
+5. The button's click handler calls `this.onCreateInstanceClick(workflowName)`.
 
 **Button styling:**
 
