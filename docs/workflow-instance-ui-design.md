@@ -106,7 +106,7 @@ instances/<instanceId>/<instanceId>.md
 
 ````markdown
 ```dataview
-TABLE ironflow-status AS "Status", ironflow-template AS "Template", ironflow-agent-profile AS "Agent", ironflow-depends-on AS "Depends On"
+TABLE ironflow-status AS "Status", ironflow-template AS "Template", ironflow-agent-profile AS "Agent", ironflow-depends-on AS "Depends On", ironflow-next-tasks AS "Next Tasks"
 FROM "Workflows/MyWorkflow/instances/run-a3f8"
 WHERE ironflow-instance-id AND file.name != "run-a3f8"
 SORT file.name ASC
@@ -202,11 +202,12 @@ canvasToolbar.ts: injectCreateInstanceButton()
     │
     ▼ (user clicks button)
     │
-instanceValidation.ts: validateWorkflowReadiness()
+main.ts: handleCreateInstanceClick()
   ├─ Loads workflow via WorkflowManager.getWorkflow()
-  ├─ For each task: extracts template-specific fields (non-ironflow-* keys)
-  ├─ Checks each field value is non-empty
-  └─ Returns: { valid: true } OR { valid: false, errors: [...] }
+  ├─ Calls validateWorkflowReadiness(workflow) — pure function
+  │     ├─ For each task: extracts template-specific fields (non-ironflow-* keys)
+  │     ├─ Checks each field value is non-empty
+  │     └─ Returns: { valid: true } OR { valid: false, errors: [...] }
     │
     ├─ (invalid) → Notice with error details → STOP
     │
@@ -336,6 +337,8 @@ If no errors are found across all tasks, return `{ valid: true, errors: [] }`.
 
 **Note:** This function is pure (no side effects, no Vault access) and operates on the already-loaded `IronflowWorkflow` object. This makes it straightforward to unit test.
 
+**Relationship to existing code:** `InstanceManager.ts` already has a private `validateTaskFieldValues()` method and a private `isManagedIronflowField()` helper. The existing validation checks that fields are **present** in the caller-provided `fieldValues` map. The new `validateWorkflowReadiness()` checks that fields already **have non-empty values** in the definition task frontmatter. Both use the same `ironflow-*` prefix check to identify managed vs. template-specific fields. The implementation should reuse `isManagedIronflowField()` (promoted to an exported utility) rather than duplicating the prefix logic.
+
 #### 4.3.3 `CreateInstancePanel.ts` — Side Panel
 
 An `ItemView` for confirming instance creation. Similar in structure to the existing `TaskPropertyPanel`.
@@ -404,25 +407,25 @@ export class CreateInstancePanel extends ItemView {
 └──────────────────────────────────┘
 ```
 
-**Field value extraction:** When the user clicks confirm, the panel extracts template-specific field values directly from the definition task frontmatter (already validated as non-empty). This builds the `fieldValues` argument for `InstanceManager.createInstance()`:
+**Field value extraction:** When the user clicks confirm, the panel extracts template-specific field values directly from the definition task frontmatter (already validated as non-empty). This builds the `fieldValues` argument for `InstanceManager.createInstance()`.
+
+The extraction logic reuses the existing `isManagedIronflowField()` helper already defined in `InstanceManager.ts` (which checks `key.startsWith("ironflow-")`). To make it available to the panel, this helper should be promoted from a module-private function to an exported utility — either from `InstanceManager.ts` or moved to `taskUtils.ts` alongside other frontmatter helpers.
 
 ```typescript
+// Builds the fieldValues map by extracting non-ironflow-* fields per task.
+// Uses the existing isManagedIronflowField() helper.
 function extractFieldValues(
     workflow: IronflowWorkflow
 ): Record<string, Record<string, unknown>> {
     const fieldValues: Record<string, Record<string, unknown>> = {};
     for (const task of workflow.tasks) {
-        const taskFields: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(task.frontmatter)) {
-            if (!key.startsWith("ironflow-")) {
-                taskFields[key] = value;
-            }
-        }
-        fieldValues[task.name] = taskFields;
+        fieldValues[task.name] = getUserFieldValues(task.frontmatter);
     }
     return fieldValues;
 }
 ```
+
+**Note:** `getUserFieldValues()` and `isManagedIronflowField()` already exist as private functions in `InstanceManager.ts`. Rather than duplicating this logic, the implementation should export these helpers (or move them to a shared utility module like `taskUtils.ts`) so both `InstanceManager` and `CreateInstancePanel` can use them.
 
 #### 4.3.4 `InstanceManager` — Folder Note Creation (Extension)
 
@@ -478,7 +481,6 @@ For example: `Workflows/Test-Workflow/instances/run-a3f8/run-a3f8.md`
 1. **Register `CreateInstancePanel` view** — alongside the existing `TaskPropertyPanel` registration.
 2. **Initialize `CanvasToolbarManager`** — with a callback that triggers validation and panel opening.
 3. **Register `create-instance` command** — command palette fallback that performs the same flow as the canvas button.
-4. **Dataview availability check** — alongside the existing Templater check.
 
 ```typescript
 // In onload():
@@ -510,8 +512,6 @@ this.addCommand({
     },
 });
 
-// Check Dataview availability
-this.ensureDataviewIsAvailable();
 ```
 
 **New methods on `IronflowPlugin`:**
@@ -573,13 +573,14 @@ private showValidationErrorNotice(
 }
 
 /**
- * Show a notice if Dataview is not enabled.
+ * Check whether the Dataview plugin is enabled.
  */
-private ensureDataviewIsAvailable(): void {
-    // Non-blocking — Dataview is recommended, not required
-    // The notice is shown at instance creation time, not plugin load
+private isDataviewEnabled(): boolean {
+    return this.app.plugins.enabledPlugins.has("dataview");
 }
 ```
+
+**Note:** Unlike the Templater check (`ensureTemplaterIsEnabled()` which runs at plugin load and shows a persistent notice), the Dataview check is called at instance creation time — Dataview is recommended, not required. See section 6.1.
 
 **New property on `IronflowPlugin`:**
 
@@ -597,23 +598,11 @@ this.canvasToolbarManager = null;
 
 Add the `createInstanceFolderNote()` method as described in section 4.3.4. This method is called by the `CreateInstancePanel` after `createInstance()` succeeds.
 
-### 5.3 Module Augmentation for Canvas Types
+### 5.3 Canvas Internal API Type Handling
 
-Add a type augmentation block (can live in `main.ts` or a dedicated `canvas.d.ts`) to suppress TypeScript errors when accessing internal canvas properties:
+The `layout-change` and `active-leaf-change` workspace events used by `CanvasToolbarManager` are already part of the official Obsidian type definitions — no module augmentation is needed for these.
 
-```typescript
-declare module "obsidian" {
-    interface Workspace {
-        on(
-            name: "layout-change",
-            callback: () => void,
-            ctx?: unknown
-        ): EventRef;
-    }
-}
-```
-
-For the canvas-specific internal types, use `@ts-ignore` or `as any` casts at the point of use, consistent with the established community pattern. Do not attempt to fully type the internal Canvas API — it is undocumented and subject to change.
+For the canvas-specific internal properties (`(view as any).canvas`, `canvas.quickSettingsButton`, etc.), use `as any` casts at the point of use, consistent with the established community pattern. Do not attempt to fully type the internal Canvas API — it is undocumented and subject to change.
 
 ---
 
