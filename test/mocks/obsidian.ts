@@ -44,6 +44,7 @@ export class MockElement {
 	attributes: Record<string, string> = {};
 	value = "";
 	clickHandler: (() => unknown) | null = null;
+	parentElement: MockElement | null = null;
 
 	constructor(tag = "div") {
 		this.tag = tag;
@@ -56,7 +57,7 @@ export class MockElement {
 
 	createDiv(): MockElement {
 		const child = new MockElement("div");
-		this.children.push(child);
+		this.appendChild(child);
 		return child;
 	}
 
@@ -65,7 +66,7 @@ export class MockElement {
 		if (options?.text) {
 			child.text = options.text;
 		}
-		this.children.push(child);
+		this.appendChild(child);
 		return child;
 	}
 
@@ -92,8 +93,74 @@ export class MockElement {
 		return `${this.text}${this.children.map((child) => child.textContent).join("")}`;
 	}
 
+	get id(): string {
+		return this.attributes.id ?? "";
+	}
+
+	set id(value: string) {
+		if (value.length === 0) {
+			delete this.attributes.id;
+			return;
+		}
+
+		this.attributes.id = value;
+	}
+
+	get className(): string {
+		return [...this.classes].join(" ");
+	}
+
+	set className(value: string) {
+		this.classes = new Set(
+			value
+				.split(/\s+/)
+				.map((className) => className.trim())
+				.filter((className) => className.length > 0)
+		);
+	}
+
+	appendChild(child: MockElement): MockElement {
+		child.parentElement = this;
+		this.children.push(child);
+		return child;
+	}
+
+	remove(): void {
+		if (!this.parentElement) {
+			return;
+		}
+
+		this.parentElement.children = this.parentElement.children.filter(
+			(child) => child !== this
+		);
+		this.parentElement = null;
+	}
+
+	querySelector(selector: string): MockElement | null {
+		if (!selector.startsWith("#")) {
+			return null;
+		}
+
+		return this.findById(selector.slice(1));
+	}
+
 	click(): void {
 		this.clickHandler?.();
+	}
+
+	private findById(id: string): MockElement | null {
+		if (this.id === id) {
+			return this;
+		}
+
+		for (const child of this.children) {
+			const match = child.findById(id);
+			if (match) {
+				return match;
+			}
+		}
+
+		return null;
 	}
 }
 
@@ -101,7 +168,7 @@ export class Notice {
 	static notices: string[] = [];
 	message: string;
 
-	constructor(message: string) {
+	constructor(message: string, _timeout?: number) {
 		this.message = message;
 		Notice.notices.push(message);
 	}
@@ -147,6 +214,10 @@ export class View extends Component {
 		this.leaf = leaf;
 		this.app = leaf.workspace.app;
 		this.containerEl = leaf.containerEl;
+	}
+
+	getViewType(): string {
+		return "view";
 	}
 }
 
@@ -330,6 +401,12 @@ export class Workspace extends Events {
 		return this.activeFile;
 	}
 
+	getActiveViewOfType<TView extends View>(
+		_type: new (...args: unknown[]) => TView
+	): TView | null {
+		return (this.activeLeaf?.view as TView | null) ?? null;
+	}
+
 	getLeavesOfType(type: string): WorkspaceLeaf[] {
 		return this.leaves.filter((leaf) => leaf.getViewState().type === type);
 	}
@@ -495,5 +572,23 @@ export class Setting {
 		this.settingEl.children.push(button.buttonEl);
 		callback(button);
 		return this;
+	}
+}
+
+export function setIcon(
+	element: MockElement | { attributes?: Record<string, string> },
+	icon: string
+): void {
+	if ("attributes" in element && element.attributes) {
+		element.attributes["data-icon"] = icon;
+	}
+}
+
+export function setTooltip(
+	element: MockElement | { attributes?: Record<string, string> },
+	tooltip: string
+): void {
+	if ("attributes" in element && element.attributes) {
+		element.attributes["aria-label"] = tooltip;
 	}
 }

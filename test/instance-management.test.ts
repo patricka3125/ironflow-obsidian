@@ -272,6 +272,74 @@ describe("Instance management", () => {
 		).not.toBeNull();
 	});
 
+	it("creates an instance folder note with the expected frontmatter and Dataview query", async () => {
+		const app = createFakeApp();
+		const settings = createSettings();
+		seedWorkflowDefinition(app.vault, "alpha");
+		seedTemplates(app.vault);
+		const instanceManager = createInstanceManager(
+			app,
+			settings,
+			createTemplateRegistryStub([
+				{
+					name: "Development Execution",
+					filePath: "Templates/Development Execution.md",
+					fields: [],
+				},
+				{
+					name: "Review Execution",
+					filePath: "Templates/Review Execution.md",
+					fields: [],
+				},
+			])
+		);
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-03-29T12:00:00.000Z"));
+
+		try {
+			const instance = await instanceManager.createInstance(
+				"alpha",
+				{
+					"Develop Phase 1": {
+						"plan-path": "Projects/alpha/plan.md",
+						references: "src/main.ts",
+					},
+					"Review Phase 1": {
+						references: "src/main.ts",
+					},
+				},
+				"sprint-1"
+			);
+
+			const folderNote = await instanceManager.createInstanceFolderNote(instance);
+			const folderNoteContent = await readFileContent(
+				app.vault,
+				"Workflows/alpha/instances/sprint-1/sprint-1.md"
+			);
+
+			expect(folderNote.path).toBe("Workflows/alpha/instances/sprint-1/sprint-1.md");
+			expect(parseFrontmatter(folderNoteContent)).toEqual({
+				"ironflow-type": "instance-base",
+				"ironflow-workflow": "alpha",
+				"ironflow-instance-id": "sprint-1",
+			});
+			expect(folderNoteContent).toContain("# sprint-1");
+			expect(folderNoteContent).toContain("**Workflow:** [[alpha]]");
+			expect(folderNoteContent).toContain("**Created:** 2026-03-29");
+			expect(folderNoteContent).toContain(
+				'TABLE ironflow-status AS "Status", ironflow-template AS "Template", ironflow-agent-profile AS "Agent", ironflow-depends-on AS "Depends On", ironflow-next-tasks AS "Next Tasks"'
+			);
+			expect(folderNoteContent).toContain(
+				'FROM "Workflows/alpha/instances/sprint-1"'
+			);
+			expect(folderNoteContent).toContain(
+				'WHERE ironflow-instance-id AND file.name != "sprint-1"'
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("throws when the workflow does not exist", async () => {
 		const app = createFakeApp();
 		const instanceManager = createInstanceManager(
