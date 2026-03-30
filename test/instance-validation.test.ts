@@ -80,6 +80,21 @@ describe("validateWorkflowReadiness", () => {
 		});
 	});
 
+	it("treats empty arrays in template-specific fields as empty", () => {
+		expect(
+			validateWorkflowReadiness(
+				createWorkflow([
+					createTask("task-a", {
+						references: [],
+					}),
+				])
+			)
+		).toEqual({
+			valid: false,
+			errors: [{ taskName: "task-a", missingFields: ["references"] }],
+		});
+	});
+
 	it("returns all tasks with missing template-specific fields", () => {
 		expect(
 			validateWorkflowReadiness(

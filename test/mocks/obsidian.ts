@@ -55,8 +55,11 @@ export class MockElement {
 		this.children = [];
 	}
 
-	createDiv(): MockElement {
+	createDiv(options?: { cls?: string }): MockElement {
 		const child = new MockElement("div");
+		if (options?.cls) {
+			child.addClass(options.cls);
+		}
 		this.appendChild(child);
 		return child;
 	}

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { App, Notice, WorkspaceLeaf } from "obsidian";
 
@@ -21,6 +21,47 @@ describe("CreateInstancePanel", () => {
 
 		await panel.onOpen();
 
+		expect(panel.containerEl.textContent).toContain(
+			"Click the play button on a workflow canvas to start."
+		);
+		expect(
+			(
+				panel.containerEl.children[0] as unknown as
+					| { classes: Set<string> }
+					| undefined
+			)?.classes.has("ironflow-empty-state")
+		).toBe(true);
+	});
+
+	it("shows a notice and keeps the empty state when workflowManager is unavailable", async () => {
+		const panel = createPanel({
+			workflowManager: null,
+		});
+
+		await panel.loadWorkflow("alpha");
+
+		expect((Notice as unknown as { notices: string[] }).notices).toContain(
+			"Workflow manager is unavailable."
+		);
+		expect(panel.containerEl.textContent).toContain(
+			"Click the play button on a workflow canvas to start."
+		);
+	});
+
+	it("shows a notice and keeps the empty state when the workflow does not exist", async () => {
+		const panel = createPanel({
+			workflowManager: {
+				async getWorkflow(): Promise<null> {
+					return null;
+				},
+			},
+		});
+
+		await panel.loadWorkflow("missing");
+
+		expect((Notice as unknown as { notices: string[] }).notices).toContain(
+			'Workflow "missing" not found.'
+		);
 		expect(panel.containerEl.textContent).toContain(
 			"Click the play button on a workflow canvas to start."
 		);
@@ -187,6 +228,55 @@ describe("CreateInstancePanel", () => {
 		expect((panel as any).createButton.disabled).toBe(false);
 		expect(panel.containerEl.textContent).toContain("alpha");
 		expect(panel.containerEl.textContent).toContain("Create Instance");
+	});
+
+	it("shows a notice when instanceManager is unavailable at create time", async () => {
+		const workflow = createWorkflow();
+		const panel = createPanel({
+			workflowManager: {
+				async getWorkflow(): Promise<typeof workflow> {
+					return workflow;
+				},
+			},
+			instanceManager: null,
+		});
+
+		await panel.loadWorkflow("alpha");
+		(panel as any).createButton.click();
+		await flushAsyncWork();
+
+		expect((Notice as unknown as { notices: string[] }).notices).toContain(
+			"Instance creation is unavailable."
+		);
+		expect(panel.containerEl.textContent).toContain("Create Instance");
+	});
+
+	it("shows a generic error message when creation throws a non-Error value", async () => {
+		const workflow = createWorkflow();
+		const panel = createPanel({
+			workflowManager: {
+				async getWorkflow(): Promise<typeof workflow> {
+					return workflow;
+				},
+			},
+			instanceManager: {
+				async createInstance(): Promise<WorkflowInstance> {
+					throw "boom";
+				},
+				async createInstanceFolderNote(): Promise<FakeFile> {
+					throw new Error("Should not be called.");
+				},
+			},
+		});
+
+		await panel.loadWorkflow("alpha");
+		(panel as any).createButton.click();
+		await flushAsyncWork();
+
+		expect((Notice as unknown as { notices: string[] }).notices).toContain(
+			"Failed to create the workflow instance."
+		);
+		expect((panel as any).createButton.disabled).toBe(false);
 	});
 });
 
