@@ -101,8 +101,8 @@ export class CanvasToolbarManager {
 
 		button.id = this.buttonId;
 		button.className = "clickable-icon";
-		setIcon(button as never, "play");
-		setTooltip(button as never, "Create Workflow Instance");
+		setIcon(button as unknown as HTMLElement, "play");
+		setTooltip(button as unknown as HTMLElement, "Create Workflow Instance");
 		this.bindClickHandler(button, () => this.onCreateInstanceClick(workflowName));
 		this.currentButton = button;
 	}

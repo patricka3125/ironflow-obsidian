@@ -1,4 +1,4 @@
-import { App, MockElement, Plugin } from "obsidian";
+import { App, Plugin, WorkspaceLeaf } from "obsidian";
 import { describe, expect, it } from "vitest";
 
 import { CanvasToolbarManager } from "../src/views/canvasToolbar";
@@ -6,7 +6,7 @@ import { CanvasToolbarManager } from "../src/views/canvasToolbar";
 describe("CanvasToolbarManager", () => {
 	it("injects a create-instance button on workflow canvases and invokes the callback", () => {
 		const app = new App();
-		const plugin = new Plugin(app, { id: "ironflow" });
+		const plugin = new TestPlugin(app);
 		const clickedWorkflowNames: string[] = [];
 		const manager = new CanvasToolbarManager(
 			app,
@@ -25,7 +25,10 @@ describe("CanvasToolbarManager", () => {
 
 		const button = controlsContainer.querySelector(
 			"#ironflow-create-instance-button"
-		);
+		) as HTMLElement & {
+			attributes: Record<string, string>;
+			click(): void;
+		};
 		expect(button).not.toBeNull();
 		expect(button?.className).toBe("clickable-icon");
 		expect(button?.attributes["data-icon"]).toBe("play");
@@ -37,7 +40,7 @@ describe("CanvasToolbarManager", () => {
 
 	it("prevents duplicate buttons when the same workflow canvas is revisited", () => {
 		const app = new App();
-		const plugin = new Plugin(app, { id: "ironflow" });
+		const plugin = new TestPlugin(app);
 		const manager = new CanvasToolbarManager(app, createSettings(), () => {});
 		const { leaf, controlsContainer } = createCanvasLeaf(
 			app,
@@ -49,15 +52,16 @@ describe("CanvasToolbarManager", () => {
 		app.workspace.trigger("active-leaf-change", leaf);
 
 		expect(
-			controlsContainer.children.filter(
-				(child) => child.id === "ironflow-create-instance-button"
+			Array.from(controlsContainer.children).filter(
+				(child: Element & { id?: string }) =>
+					child.id === "ironflow-create-instance-button"
 			)
 		).toHaveLength(1);
 	});
 
 	it("removes the button when the active leaf is not a canvas", () => {
 		const app = new App();
-		const plugin = new Plugin(app, { id: "ironflow" });
+		const plugin = new TestPlugin(app);
 		const manager = new CanvasToolbarManager(app, createSettings(), () => {});
 		const { leaf, controlsContainer } = createCanvasLeaf(
 			app,
@@ -84,7 +88,7 @@ describe("CanvasToolbarManager", () => {
 
 	it("removes the button when layout changes to a non-workflow canvas", () => {
 		const app = new App();
-		const plugin = new Plugin(app, { id: "ironflow" });
+		const plugin = new TestPlugin(app);
 		const manager = new CanvasToolbarManager(app, createSettings(), () => {});
 		const workflowCanvas = createCanvasLeaf(app, "Workflows/alpha.canvas");
 		const nonWorkflowCanvas = createCanvasLeaf(app, "Notes/alpha.canvas");
@@ -112,9 +116,26 @@ describe("CanvasToolbarManager", () => {
 		).toBeNull();
 	});
 
+	it("injects the button when layout-change fires with a workflow canvas active", () => {
+		const app = new App();
+		const plugin = new TestPlugin(app);
+		const manager = new CanvasToolbarManager(app, createSettings(), () => {});
+		const workflowCanvas = createCanvasLeaf(app, "Workflows/alpha.canvas");
+
+		manager.register(plugin);
+		app.workspace.activeLeaf = workflowCanvas.leaf;
+		app.workspace.trigger("layout-change");
+
+		expect(
+			workflowCanvas.controlsContainer.querySelector(
+				"#ironflow-create-instance-button"
+			)
+		).not.toBeNull();
+	});
+
 	it("fails silently when the canvas controls container is unavailable", () => {
 		const app = new App();
-		const plugin = new Plugin(app, { id: "ironflow" });
+		const plugin = new TestPlugin(app);
 		const manager = new CanvasToolbarManager(app, createSettings(), () => {});
 		const leaf = app.workspace.getLeaf(true);
 		leaf.view = {
@@ -147,11 +168,18 @@ function createSettings(): { workflowFolder: string; templateFolder: string } {
 function createCanvasLeaf(
 	app: App,
 	path: string
-): { leaf: ReturnType<App["workspace"]["getLeaf"]>; controlsContainer: MockElement } {
+): {
+	leaf: WorkspaceLeaf;
+	controlsContainer: HTMLElement;
+} {
 	const leaf = app.workspace.getLeaf(true);
-	const controlsContainer = new MockElement("div");
-	const quickSettingsButton = new MockElement("button");
-	controlsContainer.appendChild(quickSettingsButton);
+	const leafContainer = (leaf as WorkspaceLeaf & {
+		containerEl: HTMLElement & {
+			createDiv(): HTMLElement;
+		};
+	}).containerEl;
+	const controlsContainer = leafContainer.createDiv();
+	const quickSettingsButton = controlsContainer.createEl("button");
 	leaf.view = {
 		getViewType(): string {
 			return "canvas";
@@ -164,4 +192,19 @@ function createCanvasLeaf(
 		},
 	} as never;
 	return { leaf, controlsContainer };
+}
+
+class TestPlugin extends Plugin {
+	constructor(app: App) {
+		super(app, {
+			id: "ironflow",
+			name: "Ironflow",
+			author: "Ironflow",
+			version: "1.0.0",
+			minAppVersion: "1.0.0",
+			description: "Test plugin manifest",
+		});
+	}
+
+	async onload(): Promise<void> {}
 }

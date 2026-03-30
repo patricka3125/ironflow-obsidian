@@ -340,6 +340,24 @@ describe("Instance management", () => {
 		}
 	});
 
+	it("throws when creating a folder note for an instance path that does not exist", async () => {
+		const app = createFakeApp();
+		const instanceManager = createInstanceManager(
+			app,
+			createSettings(),
+			createTemplateRegistryStub([])
+		);
+
+		await expect(
+			instanceManager.createInstanceFolderNote({
+				instanceId: "sprint-1",
+				workflowName: "alpha",
+				instancePath: "Workflows/alpha/instances/sprint-1",
+				tasks: [],
+			})
+		).rejects.toThrow(/Create the instance before creating its folder note/);
+	});
+
 	it("throws when the workflow does not exist", async () => {
 		const app = createFakeApp();
 		const instanceManager = createInstanceManager(

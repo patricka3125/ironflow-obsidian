@@ -105,6 +105,13 @@ export class InstanceManager {
 	 * Create a folder note for an instance with an embedded Dataview task table.
 	 */
 	async createInstanceFolderNote(instance: WorkflowInstance): Promise<TFile> {
+		// Folder notes are only valid for instances that already have a backing folder.
+		if (!this.app.vault.getFolderByPath(instance.instancePath)) {
+			throw new Error(
+				`Instance folder "${instance.instancePath}" does not exist. Create the instance before creating its folder note.`
+			);
+		}
+
 		const folderNotePath = `${instance.instancePath}/${instance.instanceId}.md`;
 		const folderNoteContent = this.buildInstanceFolderNoteContent(instance);
 
