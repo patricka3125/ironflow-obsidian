@@ -514,9 +514,11 @@ describe("Workflow UI", () => {
 		} as never);
 
 		await plugin.onload();
-		await (plugin as never as {
-			commands: Array<{ callback?: () => Promise<unknown> | unknown }>;
-		}).commands[4]?.callback?.();
+		await (
+			plugin as never as {
+				commands: Array<{ id: string; callback?: () => Promise<unknown> | unknown }>;
+			}
+		).commands.find((command) => command.id === "create-instance")?.callback?.();
 
 		expect((Notice as unknown as { notices: string[] }).notices).toContain(
 			"Open a workflow canvas before creating an instance."
@@ -573,6 +575,24 @@ describe("Workflow UI", () => {
 				message: expect.stringContaining("task-a: references"),
 				timeout: 0,
 			})
+		);
+		expect(app.workspace.getLeavesOfType(CreateInstancePanel.VIEW_TYPE)).toHaveLength(0);
+	});
+
+	it("shows a notice when create-instance is requested for a workflow that does not exist", async () => {
+		const app = createFakeApp();
+		app.plugins.enabledPlugins.add("templater-obsidian");
+		const plugin = new IronflowPlugin(app as never, {
+			id: "ironflow-obsidian",
+			version: "1.0.0",
+			name: "Ironflow",
+		} as never);
+
+		await plugin.onload();
+		await plugin.handleCreateInstanceClick("nonexistent");
+
+		expect((Notice as unknown as { notices: string[] }).notices).toContain(
+			'Workflow "nonexistent" not found.'
 		);
 		expect(app.workspace.getLeavesOfType(CreateInstancePanel.VIEW_TYPE)).toHaveLength(0);
 	});

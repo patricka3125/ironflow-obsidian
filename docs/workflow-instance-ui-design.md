@@ -627,6 +627,55 @@ The `layout-change` and `active-leaf-change` workspace events used by `CanvasToo
 
 For the canvas-specific internal properties (`(view as any).canvas`, `canvas.quickSettingsButton`, etc.), use `as any` casts at the point of use, consistent with the established community pattern. Do not attempt to fully type the internal Canvas API — it is undocumented and subject to change.
 
+### 5.4 `styles.css` — Create Instance Panel Styles
+
+Add styles for the `CreateInstancePanel` view to `styles.css`, following the conventions established by the existing `TaskPropertyPanel` styles.
+
+**Pattern:** Each Ironflow side panel follows a three-layer CSS structure:
+
+1. **Leaf content reset** — A `workspace-leaf-content[data-type="…"] .view-content` rule that zeroes out the default padding so the panel container controls its own layout.
+2. **Panel container** — An `.ironflow-*-panel` class on `containerEl` that adds padding and enables vertical scrolling.
+3. **Semantic child classes** — Purpose-specific classes for headings, empty states, sections, etc.
+
+The `CreateInstancePanel` reuses the existing `.ironflow-empty-state` class (shared with `TaskPropertyPanel`) and introduces panel-specific rules:
+
+```css
+/* --- Side panel: CreateInstancePanel --- */
+
+.workspace-leaf-content[data-type="ironflow-create-instance"] .view-content {
+    padding: 0;
+}
+
+.ironflow-create-instance-panel {
+    padding: var(--size-4-3);
+    overflow-y: auto;
+}
+
+.ironflow-create-instance-panel h3 {
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-semibold);
+    color: var(--text-normal);
+    padding: var(--size-4-1) 0 var(--size-4-3);
+    line-height: var(--line-height-tight);
+}
+```
+
+**CSS classes used by the panel implementation:**
+
+| Class | Element | Purpose |
+|-------|---------|---------|
+| `.ironflow-create-instance-panel` | `containerEl` | Panel padding and scroll |
+| `.ironflow-create-instance-panel h3` | Workflow name heading | Typography matching `.ironflow-task-name` |
+| `.ironflow-empty-state` | Empty-state message div | Shared with `TaskPropertyPanel` — centered, faint text |
+
+**Canvas toolbar button:** The injected play button uses the standard Obsidian `.clickable-icon` class and is appended inside the native `.canvas-controls` container. It inherits the canvas toolbar's own layout, spacing, and hover styles. No custom CSS is needed for the button itself.
+
+**Design decisions:**
+
+- The `h3` heading style mirrors `.ironflow-task-name` but targets the element directly within the panel scope rather than introducing another named class. This keeps the panel's DOM simpler since it only has one heading.
+- The leaf content padding reset follows the same pattern as `TaskPropertyPanel` to give the panel full control over its internal layout.
+- Obsidian CSS custom properties (`--size-*`, `--font-*`, `--text-*`, `--line-height-*`) are used throughout for theme compatibility.
+
 ---
 
 ## 6. Plugin Dependency Checks
@@ -743,7 +792,16 @@ The existing Templater check in `ensureTemplaterIsEnabled()` remains unchanged. 
 - [ ] The injected canvas button is removed when the plugin is disabled.
 - [ ] No resource leaks: all event listeners are registered via `registerEvent()` or `register()`.
 
-### 8.10 Unit Tests
+### 8.10 Styles
+
+- [ ] `styles.css` includes a leaf content padding reset for `data-type="ironflow-create-instance"`.
+- [ ] `.ironflow-create-instance-panel` provides padding and vertical scroll, matching the `.ironflow-task-panel` layout.
+- [ ] `.ironflow-create-instance-panel h3` styles the workflow name heading with typography consistent with `.ironflow-task-name`.
+- [ ] All rules use Obsidian CSS custom properties (`--size-*`, `--font-*`, `--text-*`, `--line-height-*`) for theme compatibility.
+- [ ] The existing `.ironflow-empty-state` class is reused without duplication.
+- [ ] The canvas toolbar button requires no custom CSS (inherits `.clickable-icon` and `.canvas-controls` styles).
+
+### 8.11 Unit Tests
 
 - [ ] `validateWorkflowReadiness()`: all fields populated returns valid.
 - [ ] `validateWorkflowReadiness()`: empty string field returns invalid with correct task and field name.
