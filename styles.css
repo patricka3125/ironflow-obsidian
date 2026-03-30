@@ -80,6 +80,25 @@
 	margin-top: var(--size-2-2);
 }
 
+/* --- Side panel: CreateInstancePanel --- */
+
+.workspace-leaf-content[data-type="ironflow-create-instance"] .view-content {
+	padding: 0;
+}
+
+.ironflow-create-instance-panel {
+	padding: var(--size-4-3);
+	overflow-y: auto;
+}
+
+.ironflow-create-instance-panel h3 {
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+	padding: var(--size-4-1) 0 var(--size-4-3);
+	line-height: var(--line-height-tight);
+}
+
 /* --- Modal: WorkflowCommandModal --- */
 
 .ironflow-modal {
