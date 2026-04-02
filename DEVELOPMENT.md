@@ -77,6 +77,20 @@ npx tsc --noEmit --skipLibCheck
 
 Runs the TypeScript compiler without emitting output. Useful for CI or quick validation.
 
+### Regenerating API schema types
+
+The REST API contract is defined in `src/api/openapi.yaml`. TypeScript types for
+that contract are generated into `src/api/schema.d.ts` via `openapi-typescript`.
+
+To regenerate the API types after changing the OpenAPI spec, run:
+
+```bash
+npm run generate:api-types
+```
+
+`src/api/schema.d.ts` is a generated artifact and is gitignored, so regenerate it
+locally whenever you update `src/api/openapi.yaml`.
+
 ## Reloading Changes
 
 After esbuild recompiles `main.js`, you need to reload the plugin in Obsidian:

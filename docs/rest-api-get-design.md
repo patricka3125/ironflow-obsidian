@@ -9,6 +9,20 @@ fetching full task content by name.
 
 **GitHub Issue:** #3 (scoped subset)
 
+### Scope Note: OpenAPI Schema as Source of Truth
+
+The OpenAPI 3.0.3 specification in Section 3 defines the canonical schema for all
+request parameters, response bodies, and error shapes. To prevent drift between the
+spec and the TypeScript implementation, the spec must be extracted to a standalone
+YAML file and used to **generate** TypeScript types via
+[openapi-typescript](https://openapi-ts.dev/). The generated types replace the
+hand-written interfaces currently in `src/api/routes.ts` (`ErrorResponse`,
+`InstanceTaskSummary`, `InstanceTaskDetail`). This ensures a single source of truth
+and enables downstream consumers to build type-safe API clients via
+[openapi-fetch](https://openapi-ts.dev/openapi-fetch/).
+
+Phase 4 (below) covers this integration.
+
 ## 2. Endpoints
 
 | Method | Path | Description |
@@ -382,6 +396,9 @@ Expand the mock `addRoute()` to support capturing registered handlers with param
 | `test/mocks/obsidian-local-rest-api.ts` | Expand mock to capture handlers and support params |
 | `test/instance-read.test.ts` | **New** — tests for `getInstanceTasks`, `getInstanceTask` |
 | `test/api-routes.test.ts` | **New** — tests for route handlers (status codes, shapes) |
+| `src/api/openapi.yaml` | **New** — standalone OpenAPI 3.0.3 spec (source of truth) |
+| `src/api/schema.d.ts` | **Generated** — TypeScript types from the OpenAPI spec |
+| `package.json` | Add `openapi-typescript` dev dep and `generate:api-types` script |
 
 ## 8. Testing Strategy
 
@@ -568,4 +585,139 @@ Run `npm run build` and `npm test` to confirm the entire project compiles and al
 
 - `npm run build` exits with code 0 and produces no new TypeScript errors.
 - `npm test` exits with code 0 and all test suites pass.
+- No regressions in existing test suites.
+
+---
+
+### Phase 4: OpenAPI Schema Integration via openapi-typescript
+
+**Depends on:** Phase 3 (routes, tests, and build all passing).
+
+**Goal:** Make the OpenAPI 3.0.3 specification the single source of truth for API
+types. Extract the spec to a standalone YAML file, generate TypeScript types from it
+using `openapi-typescript`, and refactor the route handlers to use the generated
+types instead of the hand-written interfaces. This eliminates spec-to-code drift and
+enables downstream consumers to build type-safe API clients via `openapi-fetch`.
+
+**Background — openapi-typescript workflow:**
+
+The [openapi-ts](https://openapi-ts.dev/) ecosystem provides:
+
+- **`openapi-typescript`** — CLI/library that reads an OpenAPI 3.0/3.1 YAML or JSON
+  spec and emits a `.d.ts` file containing zero-runtime TypeScript types for all
+  `paths`, `components.schemas`, `operations`, parameters, and responses.
+- **`openapi-fetch`** — A 6 KB type-safe fetch wrapper that consumes the generated
+  `paths` type. API consumers call `client.GET("/ironflow/...")` and get full
+  autocomplete and compile-time checking of URL params, query params, request bodies,
+  and response shapes — with no manual generics.
+
+The workflow is:
+
+```
+openapi.yaml  ──(npx openapi-typescript)──▶  schema.d.ts  ──(import)──▶  routes.ts / client code
+```
+
+**Phase Acceptance Criteria:**
+
+- A standalone `src/api/openapi.yaml` file contains the full OpenAPI 3.0.3 spec.
+- `openapi-typescript` is a dev dependency and an `npm run generate:api-types` script
+  produces `src/api/schema.d.ts`.
+- The hand-written interfaces in `src/api/routes.ts` (`ErrorResponse`,
+  `InstanceTaskSummary`, `InstanceTaskDetail`) are removed and replaced with imports
+  from the generated `schema.d.ts`.
+- Route handler behavior is unchanged — all existing tests pass.
+- `npm run build` and `npm test` pass.
+
+#### Task 4.1: Extract OpenAPI spec to standalone YAML file
+
+**Description:**
+Move the OpenAPI 3.0.3 specification currently embedded in Section 3 of this design
+doc into a standalone file at `src/api/openapi.yaml`. The YAML content is identical
+to Section 3 with no modifications. This file becomes the canonical, machine-readable
+API contract.
+
+**Acceptance Criteria:**
+
+- File: `src/api/openapi.yaml`.
+- Content matches the OpenAPI spec from Section 3 of this document exactly.
+- The file is valid OpenAPI 3.0.3 (parseable by standard tools).
+
+#### Task 4.2: Add `openapi-typescript` and type generation script
+
+**Description:**
+Install `openapi-typescript` as a dev dependency. Add an npm script
+`generate:api-types` to `package.json` that runs:
+
+```bash
+npx openapi-typescript src/api/openapi.yaml -o src/api/schema.d.ts
+```
+
+This generates a `schema.d.ts` file exporting `paths` (keyed by endpoint path and
+HTTP method, containing parameter/response types) and `components` (containing the
+`schemas` namespace with `IronflowTaskFrontmatter`, `InstanceTaskSummary`,
+`InstanceTaskDetail`, and `ErrorResponse`).
+
+Add `src/api/schema.d.ts` to `.gitignore` since it is a generated artifact, or
+alternatively commit it and add a `--check` CI step to verify it stays in sync.
+Document the chosen approach in `DEVELOPMENT.md`.
+
+**Acceptance Criteria:**
+
+- `openapi-typescript` is listed in `devDependencies` in `package.json`.
+- `npm run generate:api-types` produces `src/api/schema.d.ts` without errors.
+- The generated file exports `paths` and `components` types derived from the spec.
+- `components["schemas"]["InstanceTaskSummary"]`, `components["schemas"]["InstanceTaskDetail"]`,
+  `components["schemas"]["ErrorResponse"]`, and
+  `components["schemas"]["IronflowTaskFrontmatter"]` are all present in the generated
+  output.
+- The project's approach to generated-file handling (gitignored vs committed + CI
+  check) is documented.
+
+#### Task 4.3: Refactor `src/api/routes.ts` to use generated types
+
+**Description:**
+Remove the hand-written `ErrorResponse`, `InstanceTaskSummary`, and
+`InstanceTaskDetail` interfaces from `src/api/routes.ts`. Replace them with type
+aliases or direct imports from the generated `src/api/schema.d.ts`:
+
+```typescript
+import type { components } from "./schema";
+
+type ErrorResponse = components["schemas"]["ErrorResponse"];
+type InstanceTaskSummary = components["schemas"]["InstanceTaskSummary"];
+type InstanceTaskDetail = components["schemas"]["InstanceTaskDetail"];
+```
+
+Update `sendJson()` and the mapper functions to use these types. The runtime behavior
+of all route handlers must remain identical — this is a types-only refactor.
+
+**Acceptance Criteria:**
+
+- No hand-written API response interfaces remain in `src/api/routes.ts`.
+- All response types are derived from the generated schema.
+- `sendJson()`, `toInstanceTaskSummary()`, and `toInstanceTaskDetail()` compile
+  against the generated types without `as` casts or `any`.
+- All existing tests in `test/api-routes.test.ts` and `test/instance-read.test.ts`
+  continue to pass without modification.
+- `npm run build` succeeds with no new type errors.
+
+#### Task 4.4: Build, test, and sync verification
+
+**Description:**
+Run the full verification suite to confirm the refactor is correct and the generated
+types stay in sync with the spec:
+
+1. `npm run generate:api-types` — regenerate types from the spec.
+2. `npm run build` — confirm the project compiles against the generated types.
+3. `npm test` — confirm all tests pass.
+4. Modify a field name in `src/api/openapi.yaml`, regenerate, and verify that
+   `npm run build` produces a type error in `routes.ts` — confirming the spec is
+   truly the source of truth. Revert the modification.
+
+**Acceptance Criteria:**
+
+- `npm run generate:api-types` exits with code 0.
+- `npm run build` exits with code 0.
+- `npm test` exits with code 0 and all test suites pass.
+- A deliberate spec change causes a compile error, proving type safety.
 - No regressions in existing test suites.

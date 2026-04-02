@@ -7,20 +7,13 @@ import type {
 	IronflowTask,
 	IronflowTaskFrontmatter,
 } from "../types";
+import type { components } from "./schema";
 
-interface ErrorResponse {
-	error: string;
-}
-
-interface InstanceTaskSummary {
-	name: string;
-	filePath: string;
-	frontmatter: IronflowTaskFrontmatter;
-}
-
-interface InstanceTaskDetail extends InstanceTaskSummary {
-	body: string;
-}
+type ErrorResponse = components["schemas"]["ErrorResponse"];
+type ApiIronflowTaskFrontmatter =
+	components["schemas"]["IronflowTaskFrontmatter"];
+type InstanceTaskSummary = components["schemas"]["InstanceTaskSummary"];
+type InstanceTaskDetail = components["schemas"]["InstanceTaskDetail"];
 
 /**
  * Register read-only REST API routes for workflow instance tasks.
@@ -77,7 +70,7 @@ function toInstanceTaskSummary(task: IronflowTask): InstanceTaskSummary {
 	return {
 		name: task.name,
 		filePath: task.filePath,
-		frontmatter: task.frontmatter,
+		frontmatter: toApiFrontmatter(task.frontmatter),
 	};
 }
 
@@ -88,6 +81,40 @@ function toInstanceTaskDetail(
 	return {
 		...toInstanceTaskSummary(task),
 		body,
+	};
+}
+
+function toApiFrontmatter(
+	frontmatter: IronflowTaskFrontmatter
+): ApiIronflowTaskFrontmatter {
+	const {
+		"ironflow-template": template,
+		"ironflow-workflow": workflow,
+		"ironflow-agent-profile": agentProfile,
+		"ironflow-depends-on": dependsOn,
+		"ironflow-next-tasks": nextTasks,
+		"ironflow-instance-id": instanceId,
+		"ironflow-status": status,
+		...userDefinedFields
+	} = frontmatter;
+
+	if (instanceId === undefined) {
+		throw new Error('Task frontmatter is missing "ironflow-instance-id".');
+	}
+
+	if (status === undefined) {
+		throw new Error('Task frontmatter is missing "ironflow-status".');
+	}
+
+	return {
+		...userDefinedFields,
+		"ironflow-template": template,
+		"ironflow-workflow": workflow,
+		"ironflow-agent-profile": agentProfile,
+		"ironflow-depends-on": dependsOn,
+		"ironflow-next-tasks": nextTasks,
+		"ironflow-instance-id": instanceId,
+		"ironflow-status": status,
 	};
 }
 
