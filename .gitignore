@@ -23,5 +23,8 @@ data.json
 test/e2e/.env
 test/e2e/.venv/
 
+# Python 
+__pycache__
+
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
