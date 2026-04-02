@@ -175,6 +175,26 @@ describe("Instance read methods", () => {
 			instanceManager.getInstanceTask("alpha", "run-a1b2", "missing-task")
 		).resolves.toBeNull();
 	});
+
+	it("throws when the workflow folder does not exist for a single task request", async () => {
+		const app = createFakeApp();
+		const instanceManager = createInstanceManager(app, createSettings());
+
+		await expect(
+			instanceManager.getInstanceTask("missing", "run-a1b2", "some-task")
+		).rejects.toThrow('Workflow "missing" not found.');
+	});
+
+	it("throws when the instance folder does not exist for a single task request", async () => {
+		const app = createFakeApp();
+		const settings = createSettings();
+		seedWorkflowDefinition(app.vault, "alpha");
+		const instanceManager = createInstanceManager(app, settings);
+
+		await expect(
+			instanceManager.getInstanceTask("alpha", "missing-run", "some-task")
+		).rejects.toThrow('Instance "missing-run" not found for workflow "alpha".');
+	});
 });
 
 function createFakeApp(): { vault: FakeVault } {

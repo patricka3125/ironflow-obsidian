@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { registerRoutes } from "../src/api/routes";
 import type { InstanceManager } from "../src/core/InstanceManager";
-import type { IronflowSettings, IronflowTask } from "../src/types";
+import type { IronflowTask } from "../src/types";
 import {
 	getAPI,
 	type MockRouteRequest,
@@ -30,8 +30,7 @@ describe("API routes", () => {
 
 		registerRoutes(
 			api as unknown as Parameters<typeof registerRoutes>[0],
-			instanceManager,
-			createSettings()
+			instanceManager
 		);
 
 		const response = await api.invokeRoute(
@@ -69,8 +68,7 @@ describe("API routes", () => {
 
 		registerRoutes(
 			api as unknown as Parameters<typeof registerRoutes>[0],
-			instanceManager,
-			createSettings()
+			instanceManager
 		);
 
 		const response = await api.invokeRoute(
@@ -105,8 +103,7 @@ describe("API routes", () => {
 
 		registerRoutes(
 			api as unknown as Parameters<typeof registerRoutes>[0],
-			instanceManager,
-			createSettings()
+			instanceManager
 		);
 
 		const response = await api.invokeRoute(
@@ -147,8 +144,7 @@ describe("API routes", () => {
 
 		registerRoutes(
 			api as unknown as Parameters<typeof registerRoutes>[0],
-			instanceManager,
-			createSettings()
+			instanceManager
 		);
 
 		const response = await api.invokeRoute(
@@ -173,8 +169,7 @@ describe("API routes", () => {
 
 		registerRoutes(
 			api as unknown as Parameters<typeof registerRoutes>[0],
-			instanceManager,
-			createSettings()
+			instanceManager
 		);
 
 		const response = await api.invokeRoute(
@@ -199,8 +194,7 @@ describe("API routes", () => {
 
 		registerRoutes(
 			api as unknown as Parameters<typeof registerRoutes>[0],
-			instanceManager,
-			createSettings()
+			instanceManager
 		);
 
 		const response = await api.invokeRoute(
@@ -229,8 +223,7 @@ describe("API routes", () => {
 
 		registerRoutes(
 			api as unknown as Parameters<typeof registerRoutes>[0],
-			instanceManager,
-			createSettings()
+			instanceManager
 		);
 
 		const response = await api.invokeRoute(
@@ -259,8 +252,7 @@ describe("API routes", () => {
 
 		registerRoutes(
 			api as unknown as Parameters<typeof registerRoutes>[0],
-			instanceManager,
-			createSettings()
+			instanceManager
 		);
 
 		const response = await api.invokeRoute(
@@ -285,8 +277,7 @@ describe("API routes", () => {
 
 		registerRoutes(
 			api as unknown as Parameters<typeof registerRoutes>[0],
-			instanceManager,
-			createSettings()
+			instanceManager
 		);
 
 		const response = await api.invokeRoute(
@@ -305,13 +296,6 @@ describe("API routes", () => {
 		});
 	});
 });
-
-function createSettings(): IronflowSettings {
-	return {
-		workflowFolder: "Workflows",
-		templateFolder: "Templates",
-	};
-}
 
 function createRequest(params: Record<string, string>): Partial<MockRouteRequest> {
 	return { params };

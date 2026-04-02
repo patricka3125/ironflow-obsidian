@@ -11,13 +11,13 @@ fetching full task content by name.
 
 ### Scope Note: OpenAPI Schema as Source of Truth
 
-The OpenAPI 3.0.3 specification in Section 3 defines the canonical schema for all
-request parameters, response bodies, and error shapes. To prevent drift between the
-spec and the TypeScript implementation, the spec must be extracted to a standalone
-YAML file and used to **generate** TypeScript types via
-[openapi-typescript](https://openapi-ts.dev/). The generated types replace the
-hand-written interfaces currently in `src/api/routes.ts` (`ErrorResponse`,
-`InstanceTaskSummary`, `InstanceTaskDetail`). This ensures a single source of truth
+The OpenAPI 3.0.3 specification at [`src/api/openapi.yaml`](../src/api/openapi.yaml)
+defines the canonical schema for all request parameters, response bodies, and error
+shapes. To prevent drift between the spec and the TypeScript implementation,
+TypeScript types are **generated** from the spec via
+[openapi-typescript](https://openapi-ts.dev/). The generated types are used in
+`src/api/routes.ts` for `ErrorResponse`, `InstanceTaskSummary`, and
+`InstanceTaskDetail`. This ensures a single source of truth
 and enables downstream consumers to build type-safe API clients via
 [openapi-fetch](https://openapi-ts.dev/openapi-fetch/).
 
@@ -40,218 +40,20 @@ Phase 4 (below) covers this integration.
 
 ## 3. OpenAPI Specification
 
-```yaml
-openapi: 3.0.3
-info:
-  title: Ironflow Instance Tasks API
-  version: 0.1.0
-  description: >
-    Read-only endpoints for retrieving task data from active workflow instances
-    managed by the ironflow-obsidian plugin. Served via obsidian-local-rest-api.
+The canonical OpenAPI 3.0.3 spec lives at [`src/api/openapi.yaml`](../src/api/openapi.yaml).
+It defines all request parameters, response bodies, and error shapes.
 
-servers:
-  - url: https://127.0.0.1:27124
-    description: Local Obsidian REST API server
+Key schemas defined in the spec:
 
-security:
-  - bearerAuth: []
+| Schema | Description |
+|--------|-------------|
+| `IronflowTaskFrontmatter` | Full task frontmatter (ironflow-managed + user-defined fields) |
+| `InstanceTaskSummary` | Task name, file path, and frontmatter (used by list endpoint) |
+| `InstanceTaskDetail` | Extends summary with the markdown `body` (used by single-task endpoint) |
+| `ErrorResponse` | `{ error: string }` shape for 404/500 responses |
 
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      description: API key from obsidian-local-rest-api settings
-
-  schemas:
-    IronflowTaskFrontmatter:
-      type: object
-      description: >
-        Full frontmatter of a task file. Includes both ironflow-managed fields
-        and user-defined template fields.
-      properties:
-        ironflow-template:
-          type: string
-          description: Name of the Templater template this task was created from.
-          example: code-review
-        ironflow-workflow:
-          type: string
-          description: Name of the parent workflow definition.
-          example: review-cycle
-        ironflow-agent-profile:
-          type: string
-          description: Agent profile assigned to this task.
-          example: developer
-        ironflow-depends-on:
-          type: array
-          items:
-            type: string
-          description: Wikilinks to tasks that must complete before this one.
-          example: ["[[setup-env]]"]
-        ironflow-next-tasks:
-          type: array
-          items:
-            type: string
-          description: Wikilinks to tasks unblocked when this one completes.
-          example: ["[[submit-pr]]"]
-        ironflow-instance-id:
-          type: string
-          description: Instance ID this task belongs to.
-          example: run-a1b2
-        ironflow-status:
-          type: string
-          enum: [open, pending, in-progress, done]
-          description: Current execution status of this task.
-          example: open
-      additionalProperties:
-        description: User-defined template fields (any type).
-      required:
-        - ironflow-template
-        - ironflow-workflow
-        - ironflow-agent-profile
-        - ironflow-depends-on
-        - ironflow-next-tasks
-        - ironflow-instance-id
-        - ironflow-status
-
-    InstanceTaskSummary:
-      type: object
-      description: A task within a workflow instance, with full frontmatter.
-      properties:
-        name:
-          type: string
-          description: Task name (file basename without extension).
-          example: lint-code
-        filePath:
-          type: string
-          description: Vault-relative path to the task file.
-          example: Workflows/review-cycle/instances/run-a1b2/lint-code.md
-        frontmatter:
-          $ref: "#/components/schemas/IronflowTaskFrontmatter"
-      required:
-        - name
-        - filePath
-        - frontmatter
-
-    InstanceTaskDetail:
-      type: object
-      description: >
-        Full task data including frontmatter and the raw markdown body content.
-      properties:
-        name:
-          type: string
-          description: Task name (file basename without extension).
-          example: lint-code
-        filePath:
-          type: string
-          description: Vault-relative path to the task file.
-          example: Workflows/review-cycle/instances/run-a1b2/lint-code.md
-        frontmatter:
-          $ref: "#/components/schemas/IronflowTaskFrontmatter"
-        body:
-          type: string
-          description: >
-            Markdown content of the task file with frontmatter stripped.
-          example: "## Instructions\n\nRun the linter on all changed files..."
-      required:
-        - name
-        - filePath
-        - frontmatter
-        - body
-
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-          description: Human-readable error message.
-          example: "Workflow \"foo\" not found."
-      required:
-        - error
-
-paths:
-  /ironflow/workflows/{name}/instances/{instance}/tasks/:
-    get:
-      summary: List all tasks in a workflow instance
-      operationId: listInstanceTasks
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Workflow definition name.
-        - name: instance
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Instance ID.
-      responses:
-        "200":
-          description: Array of tasks with frontmatter.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/InstanceTaskSummary"
-        "404":
-          description: Workflow or instance not found.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: Internal error.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /ironflow/workflows/{name}/instances/{instance}/tasks/{taskName}:
-    get:
-      summary: Get a single task with full content
-      operationId: getInstanceTask
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Workflow definition name.
-        - name: instance
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Instance ID.
-        - name: taskName
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Task name (file basename without extension).
-      responses:
-        "200":
-          description: Full task data with frontmatter and body.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/InstanceTaskDetail"
-        "404":
-          description: Workflow, instance, or task not found.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: Internal error.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-```
+TypeScript types are generated from the spec via `openapi-typescript` — see Phase 4 and
+[`DEVELOPMENT.md`](../DEVELOPMENT.md) for the generation workflow.
 
 ## 4. Example Responses
 
@@ -631,16 +433,14 @@ openapi.yaml  ──(npx openapi-typescript)──▶  schema.d.ts  ──(impor
 #### Task 4.1: Extract OpenAPI spec to standalone YAML file
 
 **Description:**
-Move the OpenAPI 3.0.3 specification currently embedded in Section 3 of this design
-doc into a standalone file at `src/api/openapi.yaml`. The YAML content is identical
-to Section 3 with no modifications. This file becomes the canonical, machine-readable
-API contract.
+Verify that the standalone OpenAPI spec at `src/api/openapi.yaml` is valid and
+consistent with the endpoint and schema descriptions in this design doc. This file
+is the canonical, machine-readable API contract.
 
 **Acceptance Criteria:**
 
-- File: `src/api/openapi.yaml`.
-- Content matches the OpenAPI spec from Section 3 of this document exactly.
-- The file is valid OpenAPI 3.0.3 (parseable by standard tools).
+- File: `src/api/openapi.yaml` exists and is valid OpenAPI 3.0.3 (parseable by standard tools).
+- Spec is consistent with the endpoints, schemas, and error shapes described in this document.
 
 #### Task 4.2: Add `openapi-typescript` and type generation script
 

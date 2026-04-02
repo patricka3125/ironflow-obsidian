@@ -3,7 +3,6 @@ import type { LocalRestApiPublicApi } from "obsidian-local-rest-api";
 
 import type { InstanceManager } from "../core/InstanceManager";
 import type {
-	IronflowSettings,
 	IronflowTask,
 	IronflowTaskFrontmatter,
 } from "../types";
@@ -20,11 +19,8 @@ type InstanceTaskDetail = components["schemas"]["InstanceTaskDetail"];
  */
 export function registerRoutes(
 	api: LocalRestApiPublicApi,
-	instanceManager: InstanceManager,
-	settings: IronflowSettings
+	instanceManager: InstanceManager
 ): void {
-	void settings;
-
 	api.addRoute("/ironflow/workflows/:name/instances/:instance/tasks/").get(
 		async (request: Request, response: Response) => {
 			try {

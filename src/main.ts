@@ -271,7 +271,7 @@ export default class IronflowPlugin extends Plugin {
 				version: this.manifest.version,
 			});
 		});
-		registerRoutes(api, instanceManager, this.settings);
+		registerRoutes(api, instanceManager);
 	}
 
 	private registerCommands(): void {

@@ -150,6 +150,25 @@ export class InstanceManager {
 		instanceId: string,
 		taskName: string
 	): Promise<{ task: IronflowTask; body: string } | null> {
+		const workflowPath = getWorkflowTaskFolderPath(
+			this.settings.workflowFolder,
+			workflowName
+		);
+		if (!this.app.vault.getFolderByPath(workflowPath)) {
+			throw new Error(`Workflow "${workflowName}" not found.`);
+		}
+
+		const instancePath = getInstancePath(
+			this.settings.workflowFolder,
+			workflowName,
+			instanceId
+		);
+		if (!this.app.vault.getFolderByPath(instancePath)) {
+			throw new Error(
+				`Instance "${instanceId}" not found for workflow "${workflowName}".`
+			);
+		}
+
 		const taskPath = getInstanceTaskPath(
 			this.settings.workflowFolder,
 			workflowName,
