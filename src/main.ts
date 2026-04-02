@@ -1,6 +1,7 @@
 import { Notice, Plugin, type CachedMetadata, type TFile } from "obsidian";
 import { getAPI, type LocalRestApiPublicApi } from "obsidian-local-rest-api";
 
+import { registerRoutes } from "./api/routes";
 import { CanvasWriter } from "./core/CanvasWriter";
 import { InstanceManager } from "./core/InstanceManager";
 import {
@@ -256,14 +257,21 @@ export default class IronflowPlugin extends Plugin {
 		}
 
 		this.api?.unregister?.();
-		this.api = getAPI(this.app, this.manifest) as RegisteredLocalRestApi;
-		this.api.addRoute("/ironflow/status/").get((_request, response) => {
+		const instanceManager = this.instanceManager;
+		if (!instanceManager) {
+			return;
+		}
+
+		const api = getAPI(this.app, this.manifest) as RegisteredLocalRestApi;
+		this.api = api;
+		api.addRoute("/ironflow/status/").get((_request, response) => {
 			response.status(200).json({
 				ok: true,
 				plugin: this.manifest.id,
 				version: this.manifest.version,
 			});
 		});
+		registerRoutes(api, instanceManager);
 	}
 
 	private registerCommands(): void {

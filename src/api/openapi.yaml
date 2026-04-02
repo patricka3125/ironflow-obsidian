@@ -1,0 +1,210 @@
+openapi: 3.0.3
+info:
+  title: Ironflow Instance Tasks API
+  version: 0.1.0
+  description: >
+    Read-only endpoints for retrieving task data from active workflow instances
+    managed by the ironflow-obsidian plugin. Served via obsidian-local-rest-api.
+
+servers:
+  - url: https://127.0.0.1:27124
+    description: Local Obsidian REST API server
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: API key from obsidian-local-rest-api settings
+
+  schemas:
+    IronflowTaskFrontmatter:
+      type: object
+      description: >
+        Full frontmatter of a task file. Includes both ironflow-managed fields
+        and user-defined template fields.
+      properties:
+        ironflow-template:
+          type: string
+          description: Name of the Templater template this task was created from.
+          example: code-review
+        ironflow-workflow:
+          type: string
+          description: Name of the parent workflow definition.
+          example: review-cycle
+        ironflow-agent-profile:
+          type: string
+          description: Agent profile assigned to this task.
+          example: developer
+        ironflow-depends-on:
+          type: array
+          items:
+            type: string
+          description: Wikilinks to tasks that must complete before this one.
+          example: ["[[setup-env]]"]
+        ironflow-next-tasks:
+          type: array
+          items:
+            type: string
+          description: Wikilinks to tasks unblocked when this one completes.
+          example: ["[[submit-pr]]"]
+        ironflow-instance-id:
+          type: string
+          description: Instance ID this task belongs to.
+          example: run-a1b2
+        ironflow-status:
+          type: string
+          enum: [open, pending, in-progress, done]
+          description: Current execution status of this task.
+          example: open
+      additionalProperties:
+        description: User-defined template fields (any type).
+      required:
+        - ironflow-template
+        - ironflow-workflow
+        - ironflow-agent-profile
+        - ironflow-depends-on
+        - ironflow-next-tasks
+        - ironflow-instance-id
+        - ironflow-status
+
+    InstanceTaskSummary:
+      type: object
+      description: A task within a workflow instance, with full frontmatter.
+      properties:
+        name:
+          type: string
+          description: Task name (file basename without extension).
+          example: lint-code
+        filePath:
+          type: string
+          description: Vault-relative path to the task file.
+          example: Workflows/review-cycle/instances/run-a1b2/lint-code.md
+        frontmatter:
+          $ref: "#/components/schemas/IronflowTaskFrontmatter"
+      required:
+        - name
+        - filePath
+        - frontmatter
+
+    InstanceTaskDetail:
+      type: object
+      description: >
+        Full task data including frontmatter and the raw markdown body content.
+      properties:
+        name:
+          type: string
+          description: Task name (file basename without extension).
+          example: lint-code
+        filePath:
+          type: string
+          description: Vault-relative path to the task file.
+          example: Workflows/review-cycle/instances/run-a1b2/lint-code.md
+        frontmatter:
+          $ref: "#/components/schemas/IronflowTaskFrontmatter"
+        body:
+          type: string
+          description: >
+            Markdown content of the task file with frontmatter stripped.
+          example: "## Instructions\n\nRun the linter on all changed files..."
+      required:
+        - name
+        - filePath
+        - frontmatter
+        - body
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+          example: "Workflow \"foo\" not found."
+      required:
+        - error
+
+paths:
+  /ironflow/workflows/{name}/instances/{instance}/tasks/:
+    get:
+      summary: List all tasks in a workflow instance
+      operationId: listInstanceTasks
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Workflow definition name.
+        - name: instance
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Instance ID.
+      responses:
+        "200":
+          description: Array of tasks with frontmatter.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InstanceTaskSummary"
+        "404":
+          description: Workflow or instance not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ironflow/workflows/{name}/instances/{instance}/tasks/{taskName}:
+    get:
+      summary: Get a single task with full content
+      operationId: getInstanceTask
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Workflow definition name.
+        - name: instance
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Instance ID.
+        - name: taskName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Task name (file basename without extension).
+      responses:
+        "200":
+          description: Full task data with frontmatter and body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceTaskDetail"
+        "404":
+          description: Workflow, instance, or task not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"

@@ -1,6 +1,6 @@
 import type { App, TFile } from "obsidian";
 
-import { stripFrontmatter, updateFrontmatter } from "./frontmatter";
+import { parseFrontmatter, stripFrontmatter, updateFrontmatter } from "./frontmatter";
 import { generateInstanceId } from "./instanceUtils";
 import type { TemplateRegistry } from "./TemplateRegistry";
 import {
@@ -8,11 +8,13 @@ import {
 	getUserFieldValues,
 	isManagedIronflowField,
 } from "./taskUtils";
+import { listMarkdownFiles } from "./vaultUtils";
 import type { WorkflowManager } from "./WorkflowManager";
 import {
 	getInstancePath,
 	getInstanceTaskPath,
 	getInstancesFolderPath,
+	getWorkflowTaskFolderPath,
 } from "./workflowPaths";
 import type {
 	IronflowSettings,
@@ -98,6 +100,92 @@ export class InstanceManager {
 			workflowName,
 			instancePath,
 			tasks,
+		};
+	}
+
+	/**
+	 * Return all task files for one active workflow instance.
+	 */
+	async getInstanceTasks(
+		workflowName: string,
+		instanceId: string
+	): Promise<IronflowTask[]> {
+		const workflowPath = getWorkflowTaskFolderPath(
+			this.settings.workflowFolder,
+			workflowName
+		);
+		const workflowFolder = this.app.vault.getFolderByPath(workflowPath);
+		if (!workflowFolder) {
+			throw new Error(`Workflow "${workflowName}" not found.`);
+		}
+
+		const instancePath = getInstancePath(
+			this.settings.workflowFolder,
+			workflowName,
+			instanceId
+		);
+		const instanceFolder = this.app.vault.getFolderByPath(instancePath);
+		if (!instanceFolder) {
+			throw new Error(
+				`Instance "${instanceId}" not found for workflow "${workflowName}".`
+			);
+		}
+
+		const taskFiles = listMarkdownFiles(instanceFolder);
+		const tasks = await Promise.all(
+			taskFiles.map(async (file) => {
+				const content = await this.app.vault.read(file as TFile);
+				return buildIronflowTask(file.path, parseFrontmatter(content));
+			})
+		);
+
+		return tasks.sort((left, right) => left.filePath.localeCompare(right.filePath));
+	}
+
+	/**
+	 * Return one task file for an active workflow instance with its markdown body.
+	 */
+	async getInstanceTask(
+		workflowName: string,
+		instanceId: string,
+		taskName: string
+	): Promise<{ task: IronflowTask; body: string } | null> {
+		const workflowPath = getWorkflowTaskFolderPath(
+			this.settings.workflowFolder,
+			workflowName
+		);
+		if (!this.app.vault.getFolderByPath(workflowPath)) {
+			throw new Error(`Workflow "${workflowName}" not found.`);
+		}
+
+		const instancePath = getInstancePath(
+			this.settings.workflowFolder,
+			workflowName,
+			instanceId
+		);
+		if (!this.app.vault.getFolderByPath(instancePath)) {
+			throw new Error(
+				`Instance "${instanceId}" not found for workflow "${workflowName}".`
+			);
+		}
+
+		const taskPath = getInstanceTaskPath(
+			this.settings.workflowFolder,
+			workflowName,
+			instanceId,
+			taskName
+		);
+		const taskFile = this.app.vault.getFileByPath(taskPath);
+		if (!taskFile) {
+			return null;
+		}
+
+		const content = await this.app.vault.read(taskFile as TFile);
+		const frontmatter = parseFrontmatter(content);
+
+		return {
+			task: buildIronflowTask(taskFile.path, frontmatter),
+			body: stripFrontmatter(content),
 		};
 	}
 

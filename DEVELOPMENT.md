@@ -12,6 +12,7 @@ These must be installed and enabled in your development vault:
 
 - [Obsidian Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) — provides the REST API framework that Ironflow extends
 - [Templater](https://github.com/SilentVoid13/Templater) — required dependency for template discovery and rendering
+- **DataView** - required for base view for active workflow instances
 
 Optional but recommended:
 
@@ -76,6 +77,80 @@ npx tsc --noEmit --skipLibCheck
 ```
 
 Runs the TypeScript compiler without emitting output. Useful for CI or quick validation.
+
+### Regenerating API schema types
+
+The REST API contract is defined in `src/api/openapi.yaml`. TypeScript types for
+that contract are generated into `src/api/schema.d.ts` via `openapi-typescript`.
+
+To regenerate the API types after changing the OpenAPI spec, run:
+
+```bash
+npm run generate:api-types
+```
+
+`src/api/schema.d.ts` is a generated artifact and is gitignored, so regenerate it
+locally whenever you update `src/api/openapi.yaml`.
+
+## End-to-End API Tests
+
+The `test/e2e/` directory contains a pytest suite that exercises the Ironflow
+REST API against a running Obsidian instance. These tests are separate from the
+unit tests in `test/` and require a live vault with the Local REST API and
+Ironflow plugins enabled.
+
+### Prerequisites
+
+- Python 3.10+
+- A running Obsidian vault with:
+  - **Local REST API** plugin enabled and an API key configured
+  - **Ironflow** plugin enabled with at least one active workflow instance
+
+### Setup
+
+```bash
+# Create a virtual environment (one-time)
+python -m venv test/e2e/.venv
+source test/e2e/.venv/bin/activate   # Linux / macOS
+# test\e2e\.venv\Scripts\activate    # Windows
+
+# Install dependencies
+pip install -r test/e2e/requirements.txt
+```
+
+Create a `.env` file from the example and fill in your API key:
+
+```bash
+cp test/e2e/.env.example test/e2e/.env
+# Edit test/e2e/.env and set OBSIDIAN_API_KEY
+```
+
+The `.env` file is gitignored and will not be committed.
+
+### Running
+
+```bash
+# Run all e2e tests
+pytest test/e2e/ -v
+
+# Run a specific test class
+pytest test/e2e/test_instance_tasks_api.py::TestListInstanceTasks -v
+```
+
+If `OBSIDIAN_API_KEY` is not set, the tests are automatically skipped.
+
+### Test data
+
+The tests expect the following data in the vault:
+
+| Item | Value |
+|------|-------|
+| Workflow | `Code Development` |
+| Instance | `run-9e79` |
+| Tasks | `Develop Phase 1`, `Review Phase 1` |
+
+Adjust the constants at the top of `test_instance_tasks_api.py` if your vault
+uses different names.
 
 ## Reloading Changes
 

@@ -14,9 +14,17 @@ main.js
 
 # Exclude sourcemaps
 *.map
+src/api/schema.d.ts
 
 # obsidian
 data.json
+
+# E2E test environment
+test/e2e/.env
+test/e2e/.venv/
+
+# Python 
+__pycache__
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
