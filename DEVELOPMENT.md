@@ -12,6 +12,7 @@ These must be installed and enabled in your development vault:
 
 - [Obsidian Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) — provides the REST API framework that Ironflow extends
 - [Templater](https://github.com/SilentVoid13/Templater) — required dependency for template discovery and rendering
+- **DataView** - required for base view for active workflow instances
 
 Optional but recommended:
 
